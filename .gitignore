@@ -1,0 +1,9 @@
+*~
+build
+*kate-swp
+*kdev*
+OGRE*
+plugins.cfg
+ogre.cfg
+*.log
+HeatEngineV2
