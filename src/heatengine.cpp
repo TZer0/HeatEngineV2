@@ -418,10 +418,7 @@ void HeatEngine::updateManObj()
 	for (int x = 0; x < data->xSize; x++) {
 		for (int y = 0; y < data->ySize; y++) {
 			for (int z = 0; z < data->zSize; z++) {
-				count += 4;
-				manObjAdd(mObjs, x, y, z, data);
-				mObjs->quad(count-1, count-2, count-3, count-4);
-				
+				manObjBoxAdd(mObjs, x, y, z, &count, data);
 			}
 		}
 	}
@@ -429,16 +426,18 @@ void HeatEngine::updateManObj()
 }
 
 
-void HeatEngine::manObjAdd(Ogre::ManualObject *obj, int xt, int yt, int z, RenderData *data)
+void HeatEngine::manObjBoxAdd(Ogre::ManualObject *obj, int x, int y, int z, uint *count, RenderData *data)
 {
-	obj->position(xt*TILESIZE, yt*TILESIZE, z*TILESIZE);
+	*count += 4;
+	obj->position(x*TILESIZE, y*TILESIZE, z*TILESIZE);
 	useTexCoord(obj, 0);
-	obj->position((xt+1)*TILESIZE, yt*TILESIZE, z*TILESIZE);
+	obj->position((x+1)*TILESIZE, y*TILESIZE, z*TILESIZE);
 	useTexCoord(obj, 1);
-	obj->position((xt+1)*TILESIZE, (yt+1)*TILESIZE, z*TILESIZE);
+	obj->position((x+1)*TILESIZE, (y+1)*TILESIZE, z*TILESIZE);
 	useTexCoord(obj, 2);
-	obj->position(xt*TILESIZE, (yt+1)*TILESIZE, z*TILESIZE);
+	obj->position(x*TILESIZE, (y+1)*TILESIZE, z*TILESIZE);
 	useTexCoord(obj, 3);
+	mObjs->quad(*count-1, *count-2, *count-3, *count-4);
 }
 
 

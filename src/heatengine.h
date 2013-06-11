@@ -22,7 +22,7 @@
 
 #define TILESIZE 10
 
-enum AddMode { XWALL, YWALL, ZWALL, BOX };
+enum AddMode { XWALL, YWALL, ZWALL };
 
 class HeatEngine : public Ogre::FrameListener, public Ogre::WindowEventListener, public OIS::KeyListener, public OIS::MouseListener, OgreBites::SdkTrayListener
 {
@@ -63,7 +63,7 @@ protected:
 	void windowClosed(Ogre::RenderWindow* rw);
 	
 	void updateManObj();
-	void manObjAdd(Ogre::ManualObject *obj, int xt, int yt, int z, RenderData *data);
+	void manObjBoxAdd(Ogre::ManualObject *obj, int xt, int yt, int z, RenderData *data);
 	void useTexCoord(Ogre::ManualObject *obj, int c);
 	
 	Ogre::Root *mRoot;
