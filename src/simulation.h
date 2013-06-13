@@ -8,6 +8,8 @@
 class RenderData {
 public:
 	int xSize, ySize, zSize;
+	bool latest;
+	std::vector<Material> materials;
 	Area ****area;
 	bool withinArea(int x, int y, int z) {
 		return 0 <= x && x < xSize && 0 <= y && y < ySize && 0 <= z && z <= zSize;
@@ -23,7 +25,6 @@ public:
 	Simulation(int x, int y, int z);
 	virtual ~Simulation();
 	void tick(Ogre::Real dt);
-	std::vector<Material> materials;
 	RenderData *getData() { return &mData; }
 private:
 	void freeSimArea();

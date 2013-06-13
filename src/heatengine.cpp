@@ -62,7 +62,7 @@ void HeatEngine::createCamera(void)
 	mCamera = mSceneMgr->createCamera("PlayerCam");
 	
 	// Position it at 500 in Z direction
-	mCamera->setPosition(Ogre::Vector3(20,20,80));
+	mCamera->setPosition(Ogre::Vector3(50, 50, 50));
 	// Look back along -Z
 	mCamera->lookAt(Ogre::Vector3(0,0,0));
 	mCamera->setNearClipDistance(5);
@@ -127,6 +127,7 @@ void HeatEngine::createScene(void)
 	Ogre::SceneNode *root = mSceneMgr->getRootSceneNode();
 	root->attachObject(mObjs);
 	root->attachObject(mWalls);
+	updateWallObj();
 }
 
 void HeatEngine::destroyScene(void)
@@ -238,7 +239,7 @@ bool HeatEngine::frameRenderingQueued(const Ogre::FrameEvent& evt)
 	}
 	
 	mSim->tick(evt.timeSinceLastFrame);
-	updateManObj();
+	updateSimulationObj();
 	//Need to capture/update each device
 	mKeyboard->capture();
 	mMouse->capture();
@@ -407,37 +408,80 @@ void HeatEngine::windowClosed(Ogre::RenderWindow* rw)
 	}
 }
 
-void HeatEngine::updateManObj()
+void HeatEngine::updateSimulationObj()
 {
 	RenderData *data = mSim->getData();
-	//mObjs->estimateVertexCount(data->xSize*data->ySize*data->zSize*6);
-	//mObjs->estimateIndexCount(data->xSize*data->ySize*data->zSize*6);
+	mObjs->estimateVertexCount(data->xSize*data->ySize*data->zSize*6);
+	mObjs->estimateIndexCount(data->xSize*data->ySize*data->zSize*6);
 	mObjs->clear();
 	mObjs->begin("defaultwall");
 	uint count = 0;
-	for (int x = 0; x < data->xSize; x++) {
-		for (int y = 0; y < data->ySize; y++) {
-			for (int z = 0; z < data->zSize; z++) {
-				manObjBoxAdd(mObjs, x, y, z, &count, data);
+	for (int s = 0; s < State::GAS; s++) {
+		State s_cast = (State) s;
+		for (int x = 0; x < data->xSize; x++) {
+			for (int y = 0; y < data->ySize; y++) {
+				for (int z = 0; z < data->zSize; z++) {
+					if (data->area[x][y][z]->mState == s_cast) {
+						manObjBoxAdd(mObjs, Ogre::Vector3(x, y, z)*TILESIZE, &count);
+					}
+				}
 			}
 		}
 	}
 	mObjs->end();
 }
 
-
-void HeatEngine::manObjBoxAdd(Ogre::ManualObject *obj, int x, int y, int z, uint *count, RenderData *data)
+void HeatEngine::updateWallObj()
 {
-	*count += 4;
-	obj->position(x*TILESIZE, y*TILESIZE, z*TILESIZE);
-	useTexCoord(obj, 0);
-	obj->position((x+1)*TILESIZE, y*TILESIZE, z*TILESIZE);
-	useTexCoord(obj, 1);
-	obj->position((x+1)*TILESIZE, (y+1)*TILESIZE, z*TILESIZE);
-	useTexCoord(obj, 2);
-	obj->position(x*TILESIZE, (y+1)*TILESIZE, z*TILESIZE);
-	useTexCoord(obj, 3);
-	mObjs->quad(*count-1, *count-2, *count-3, *count-4);
+	RenderData *data = mSim->getData();
+	mWalls->clear();
+	mWalls->begin("speedtile");
+	uint count = 0;
+	for (int x = 0; x < data->xSize; x++) {
+		for (int y = 0; y < data->ySize; y++ ){
+			manObjBoxAdd(mWalls, Ogre::Vector3(x, y, 0)*TILESIZE, &count, XWALL);
+		}
+	}
+	for (int z = 0; z < data->zSize; z++) {
+		for (int y = 0; y < data->ySize; y++ ){
+			manObjBoxAdd(mWalls, Ogre::Vector3(0, y, z)*TILESIZE, &count, YWALL);
+		}
+	}
+	for (int z = 0; z < data->zSize; z++) {
+		for (int x = 0; x < data->xSize; x++ ){
+			manObjBoxAdd(mWalls, Ogre::Vector3(x, 0, z)*TILESIZE, &count, ZWALL);
+		}
+	}
+	mWalls->end();
+}
+
+void HeatEngine::manObjBoxAdd(Ogre::ManualObject *obj, Ogre::Vector3 pos, uint *count, AddMode mode)
+{
+	uint i = 0;
+	uint lim = boxPositions.size();
+	if (mode == BOX) {
+	} else if (mode == XWALL) {
+		lim = 4;
+	} else if (mode == YWALL) {
+		i = 4;
+		lim = 8;
+	} else if (mode == ZWALL) {
+		i = 8;
+		lim = 12;
+	}
+	for (; i < lim; i+=4)
+	{
+		*count += 4;
+		obj->position(boxPositions[i] + pos);
+		useTexCoord(obj, 0);
+		obj->position(boxPositions[i+1] + pos);
+		useTexCoord(obj, 1);
+		obj->position(boxPositions[i+2] + pos);
+		useTexCoord(obj, 2);
+		obj->position(boxPositions[i+3] + pos);
+		useTexCoord(obj, 3);
+		obj->quad(*count-1, *count-2, *count-3, *count-4);
+	}
 }
 
 

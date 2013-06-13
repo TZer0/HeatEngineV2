@@ -1,28 +1,39 @@
 #ifndef __HeatEngine_h_
 #define __HeatEngine_h_
 
-#include <OgreCamera.h>
-#include <OgreEntity.h>
-#include <OgreLogManager.h>
-#include <OgreRoot.h>
-#include <OgreViewport.h>
-#include <OgreSceneManager.h>
-#include <OgreRenderWindow.h>
-#include <OgreConfigFile.h>
+#include<OgreCamera.h>
+#include<OgreEntity.h>
+#include<OgreLogManager.h>
+#include<OgreRoot.h>
+#include<OgreViewport.h>
+#include<OgreSceneManager.h>
+#include<OgreRenderWindow.h>
+#include<OgreConfigFile.h>
 
-#include <OISEvents.h>
-#include <OISInputManager.h>
-#include <OISKeyboard.h>
-#include <OISMouse.h>
+#include<OISEvents.h>
+#include<OISInputManager.h>
+#include<OISKeyboard.h>
+#include<OISMouse.h>
 
-#include <SdkTrays.h>
-#include <SdkCameraMan.h>
+#include<OgreVector3.h>
+
+#include<SdkTrays.h>
+#include<SdkCameraMan.h>
+
+#include<array>
 
 #include "simulation.h"
+#include "defines.h"
 
-#define TILESIZE 10
-
-enum AddMode { XWALL, YWALL, ZWALL };
+enum AddMode { XWALL, YWALL, ZWALL, BOX };
+std::array<Ogre::Vector3, 24> boxPositions = {{
+	Ogre::Vector3(0,0,0)*TILESIZE, Ogre::Vector3(1,0,0)*TILESIZE, Ogre::Vector3(1,1,0)*TILESIZE, Ogre::Vector3(0,1,0)*TILESIZE, 
+	Ogre::Vector3(0,0,0)*TILESIZE, Ogre::Vector3(0,1,0)*TILESIZE, Ogre::Vector3(0,1,1)*TILESIZE, Ogre::Vector3(0,0,1)*TILESIZE,
+	Ogre::Vector3(0,0,0)*TILESIZE, Ogre::Vector3(1,0,0)*TILESIZE, Ogre::Vector3(1,0,1)*TILESIZE, Ogre::Vector3(0,0,1)*TILESIZE,
+	Ogre::Vector3(0,0,1)*TILESIZE, Ogre::Vector3(1,0,1)*TILESIZE, Ogre::Vector3(1,1,1)*TILESIZE, Ogre::Vector3(0,1,1)*TILESIZE,
+	Ogre::Vector3(1,0,0)*TILESIZE, Ogre::Vector3(1,1,0)*TILESIZE, Ogre::Vector3(1,1,1)*TILESIZE, Ogre::Vector3(1,0,1)*TILESIZE,
+	Ogre::Vector3(0,1,0)*TILESIZE, Ogre::Vector3(1,1,0)*TILESIZE, Ogre::Vector3(1,1,1)*TILESIZE, Ogre::Vector3(0,1,1)*TILESIZE,
+}};
 
 class HeatEngine : public Ogre::FrameListener, public Ogre::WindowEventListener, public OIS::KeyListener, public OIS::MouseListener, OgreBites::SdkTrayListener
 {
@@ -62,8 +73,9 @@ protected:
 	//Unattach OIS before window shutdown (very important under Linux)
 	void windowClosed(Ogre::RenderWindow* rw);
 	
-	void updateManObj();
-	void manObjBoxAdd(Ogre::ManualObject *obj, int xt, int yt, int z, RenderData *data);
+	void updateSimulationObj();
+	void updateWallObj();
+	void manObjBoxAdd(Ogre::ManualObject *obj, Ogre::Vector3 pos, uint *count, AddMode mode = BOX);
 	void useTexCoord(Ogre::ManualObject *obj, int c);
 	
 	Ogre::Root *mRoot;

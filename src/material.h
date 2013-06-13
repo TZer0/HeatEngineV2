@@ -1,5 +1,8 @@
 #ifndef MATERIAL_H
 #define MATERIAL_H
+#include<vector>
+#include<OgrePrerequisites.h>
+#include "defines.h"
 
 class Material
 {
@@ -8,7 +11,9 @@ public:
 	Material();
 	Material(double solid, double liquid, double cap);
 	virtual ~Material();
-	double mSolid, mLiquid, mCap;
+	std::vector<double> mTransPoints;
+	State getState(double h);
+	double mCap;
 };
 
 #endif // MATERIAL_H

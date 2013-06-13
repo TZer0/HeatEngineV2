@@ -3,9 +3,10 @@
 Simulation::Simulation()
 {
 	mData.xSize = mData.ySize = mData.zSize = 3;
+	mData.latest = 0;
 	initSimArea();
-	materials.push_back(Material());
-	materials.push_back(Material(0, 100, 10));
+	mData.materials.push_back(Material());
+	mData.materials.push_back(Material(0, 100, 10));
 }
 
 Simulation::Simulation(int x, int y, int z)
@@ -18,7 +19,23 @@ Simulation::Simulation(int x, int y, int z)
 
 void Simulation::tick(Ogre::Real dt)
 {
-
+	mData.latest = !mData.latest;
+	bool ind = mData.latest;
+	for (int x = 0; x < mData.xSize; x++) {
+		for (int y = 0; y < mData.ySize; y++) {
+			for (int z = 0; z < mData.zSize; z++) {
+				mData.area[x][y][z]->dH[!ind] = mData.area[x][y][z]->dH[ind]+(x+y+z-9)*0.1;
+			}
+		}
+	}
+	for (int x = 0; x < mData.xSize; x++) {
+		for (int y = 0; y < mData.ySize; y++) {
+			for (int z = 0; z < mData.zSize; z++) {
+				Material m = mData.materials.at(mData.area[x][y][z]->mMat);
+				mData.area[x][y][z]->mState = m.getState(mData.area[x][y][z]->dH[mData.latest]);
+			}
+		}
+	}
 }
 
 
