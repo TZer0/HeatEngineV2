@@ -2,7 +2,7 @@
 
 Simulation::Simulation()
 {
-	mData.xSize = mData.ySize = mData.zSize = 3;
+	mData.xSize = mData.ySize = mData.zSize = 10;
 	mData.latest = 0;
 	initSimArea();
 	mData.materials.push_back(Material());
@@ -24,15 +24,16 @@ void Simulation::tick(Ogre::Real dt)
 	for (int x = 0; x < mData.xSize; x++) {
 		for (int y = 0; y < mData.ySize; y++) {
 			for (int z = 0; z < mData.zSize; z++) {
-				mData.area[x][y][z]->dH[!ind] = mData.area[x][y][z]->dH[ind]+(x+y+z-9)*0.1;
+				mData.area[x][y][z]->dH[!ind] = mData.area[x][y][z]->dH[ind]+(x+y+z-mData.xSize*3)*0.1;
 			}
 		}
 	}
 	for (int x = 0; x < mData.xSize; x++) {
 		for (int y = 0; y < mData.ySize; y++) {
 			for (int z = 0; z < mData.zSize; z++) {
-				Material m = mData.materials.at(mData.area[x][y][z]->mMat);
-				mData.area[x][y][z]->mState = m.getState(mData.area[x][y][z]->dH[mData.latest]);
+				Area *ar = mData.area[x][y][z];
+				Material m = mData.materials.at(ar->mMat);
+				ar->mState = m.getState(ar->dH[mData.latest]);
 			}
 		}
 	}
@@ -41,6 +42,7 @@ void Simulation::tick(Ogre::Real dt)
 
 void Simulation::initSimArea()
 {
+	mPreviousHover = nullptr;
 	mData.area = new Area***[mData.xSize];
 	for (int x = 0; x < mData.xSize; x++) {
 		mData.area[x] = new Area**[mData.ySize];
@@ -65,6 +67,19 @@ void Simulation::freeSimArea()
 		delete mData.area[x];
 	}
 	delete mData.area;
+}
+
+void Simulation::injectDepthAndMouse(int depth, Ogre::Vector3 camPos, Ogre::Vector3 dir)
+{
+	std::cout << depth << " " << camPos << " " << dir << std::endl;
+	if (mPreviousHover != nullptr) {
+		mPreviousHover->mHover = false;
+	}
+}
+
+void Simulation::click(bool shift)
+{
+	
 }
 
 

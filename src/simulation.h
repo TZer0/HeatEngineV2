@@ -2,6 +2,7 @@
 #define SIMULATION_H
 #include<vector>
 #include<OgrePrerequisites.h>
+#include<OgreVector3.h>
 #include "area.h"
 #include "material.h"
 
@@ -26,6 +27,9 @@ public:
 	virtual ~Simulation();
 	void tick(Ogre::Real dt);
 	RenderData *getData() { return &mData; }
+	void injectDepthAndMouse(int depth, Ogre::Vector3 camPos, Ogre::Vector3 dir);
+	void click(bool shift);
+	Area *mPreviousHover;
 private:
 	void freeSimArea();
 	void initSimArea();

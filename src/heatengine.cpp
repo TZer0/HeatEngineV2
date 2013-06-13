@@ -17,6 +17,10 @@ HeatEngine::HeatEngine(void)
 	mSim(0)
 {
 	mSim = new Simulation();
+	mCamPos = Ogre::Vector3(200, 200, 200);
+	mLookPos = Ogre::Vector3(0,0,0);
+	mDepth = 0;
+	mShiftDown = false;
 }
 
 
@@ -62,13 +66,18 @@ void HeatEngine::createCamera(void)
 	mCamera = mSceneMgr->createCamera("PlayerCam");
 	
 	// Position it at 500 in Z direction
-	mCamera->setPosition(Ogre::Vector3(50, 50, 50));
-	// Look back along -Z
-	mCamera->lookAt(Ogre::Vector3(0,0,0));
 	mCamera->setNearClipDistance(5);
 	mCamera->setFarClipDistance(600);
 	
+	updateCamera();
 }
+
+void HeatEngine::updateCamera()
+{
+	mCamera->setPosition(mCamPos+mLookPos);
+	mCamera->lookAt(mLookPos);
+}
+
 
 void HeatEngine::createFrameListener(void)
 {
@@ -230,6 +239,8 @@ bool HeatEngine::setup(void)
 
 bool HeatEngine::frameRenderingQueued(const Ogre::FrameEvent& evt)
 {
+	updateCamera();
+	
 	if(mWindow->isClosed()) {
 		return false;
 	}
@@ -267,23 +278,23 @@ bool HeatEngine::keyPressed( const OIS::KeyEvent &arg )
 {
 	if (mTrayMgr->isDialogVisible()) return true;   // don't process any more keys if dialog is up
 
-    if (arg.key == OIS::KC_F)   // toggle visibility of advanced frame stats
-    {
-	    mTrayMgr->toggleAdvancedFrameStats();
-    }
-    else if (arg.key == OIS::KC_G)   // toggle visibility of even rarer debugging details
-    {
-	    if (mDetailsPanel->getTrayLocation() == OgreBites::TL_NONE)
-	    {
-		    mTrayMgr->moveWidgetToTray(mDetailsPanel, OgreBites::TL_TOPRIGHT, 0);
-		    mDetailsPanel->show();
-	    }
-	    else
-	    {
-		    mTrayMgr->removeWidgetFromTray(mDetailsPanel);
-		    mDetailsPanel->hide();
-	    }
-    }
+	if (arg.key == OIS::KC_F)   // toggle visibility of advanced frame stats
+	{
+		mTrayMgr->toggleAdvancedFrameStats();
+	}
+	else if (arg.key == OIS::KC_G)   // toggle visibility of even rarer debugging details
+	{
+	if (mDetailsPanel->getTrayLocation() == OgreBites::TL_NONE)
+	{
+		mTrayMgr->moveWidgetToTray(mDetailsPanel, OgreBites::TL_TOPRIGHT, 0);
+		mDetailsPanel->show();
+	}
+	else
+	{
+		mTrayMgr->removeWidgetFromTray(mDetailsPanel);
+		mDetailsPanel->hide();
+	}
+	}
     else if (arg.key == OIS::KC_T)   // cycle polygon rendering mode
     {
 	    Ogre::String newVal;
@@ -364,12 +375,43 @@ bool HeatEngine::keyReleased( const OIS::KeyEvent &arg )
 bool HeatEngine::mouseMoved( const OIS::MouseEvent &arg )
 {
 	if (mTrayMgr->injectMouseMove(arg)) return true;
+	Ogre::Vector3 diff = mLookPos-mCamPos;
+	Ogre::Vector3 mirrorDiff;
+	mirrorDiff.y = diff.y = 0;
+	diff.normalise();
+	Ogre::Vector2 tmp;
+	mirrorDiff.x = -diff.x;
+	mirrorDiff.z = diff.z;
+	Ogre::Vector3 movVec = diff*arg.state.Y.rel + mirrorDiff*arg.state.X.rel;
+	if (movVec.length() > 100) {
+		return true;
+	}
+	if (arg.state.buttonDown(OIS::MB_Right))
+	{
+		mLookPos += movVec;
+	} else if (arg.state.buttonDown(OIS::MB_Middle)) {
+		mCamPos += movVec;
+	} else if (arg.state.Z.rel != 0) {
+		if (mKeyboard->isModifierDown(OIS::Keyboard::Shift)) {
+			mDepth = std::max(mDepth + 1 - (arg.state.Z.rel < 0)*2, 0);
+			std::cout << mDepth;
+		} else {
+			mCamPos *= pow(1.0001, -arg.state.Z.rel);
+			if (mCamPos.length() < 10) {
+				mCamPos /= mCamPos.length();
+			}
+		}
+	}
+	Ogre::Ray mouseRay = mTrayMgr->getCursorRay(mCamera);
+	mSim->injectDepthAndMouse(mDepth, mouseRay.getOrigin(), mouseRay.getDirection());
 	return true;
 }
 
 bool HeatEngine::mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id )
 {
 	if (mTrayMgr->injectMouseDown(arg, id)) return true;
+	if (id == OIS::MB_Left) {
+	}
 	return true;
 }
 
@@ -416,7 +458,7 @@ void HeatEngine::updateSimulationObj()
 	mObjs->clear();
 	mObjs->begin("defaultwall");
 	uint count = 0;
-	for (int s = 0; s < State::GAS; s++) {
+	for (int s = 0; s <= State::GAS; s++) {
 		State s_cast = (State) s;
 		for (int x = 0; x < data->xSize; x++) {
 			for (int y = 0; y < data->ySize; y++) {

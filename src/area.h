@@ -9,6 +9,7 @@ public:
 	Area(int mat, double H);
 	int mMat;
 	State mState;
+	bool mSelected, mHover;
 	double dH[2];
 	virtual ~Area();
 };

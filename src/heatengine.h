@@ -21,6 +21,7 @@
 #include<SdkCameraMan.h>
 
 #include<array>
+#include<cmath>
 
 #include "simulation.h"
 #include "defines.h"
@@ -73,6 +74,8 @@ protected:
 	//Unattach OIS before window shutdown (very important under Linux)
 	void windowClosed(Ogre::RenderWindow* rw);
 	
+	void updateCamera();
+	
 	void updateSimulationObj();
 	void updateWallObj();
 	void manObjBoxAdd(Ogre::ManualObject *obj, Ogre::Vector3 pos, uint *count, AddMode mode = BOX);
@@ -91,12 +94,20 @@ protected:
 	bool mCursorWasVisible;                    // was cursor visible before dialog appeared
 	bool mShutDown;
 	
-	//OIS Input devices
+	// OIS Input devices
 	OIS::InputManager* mInputManager;
 	OIS::Mouse*    mMouse;
 	OIS::Keyboard* mKeyboard;
 	Ogre::ManualObject *mWalls, *mObjs;
+	
+	// Simulation
 	Simulation *mSim;
+	int mDepth;
+	bool mShiftDown;
+	
+	// Camera variables
+	Ogre::Vector3 mCamPos;
+	Ogre::Vector3 mLookPos;
 };
 
 #endif // #ifndef __HeatEngine_h_
