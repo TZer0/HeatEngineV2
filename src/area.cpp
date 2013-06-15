@@ -2,7 +2,7 @@
 
 Area::Area()
 {
-	dH[0] = dH[1] = 10;
+	dH[0] = dH[1] = DEFAULTTEMP;
 	mMat = 0;
 	mState = UNDEFINED;
 	mHover = mSelected = false;
@@ -10,8 +10,8 @@ Area::Area()
 
 Area::Area(int mat, double H)
 {
-	mMat = mat;
 	dH[0] = dH[1] = H;
+	mMat = mat;
 	mState = UNDEFINED;
 	mHover = mSelected = false;
 }

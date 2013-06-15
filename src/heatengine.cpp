@@ -19,7 +19,7 @@ HeatEngine::HeatEngine(void)
 	mSim = new Simulation();
 	mCamPos = Ogre::Vector3(200, 200, 200);
 	mLookPos = Ogre::Vector3(0,0,0);
-	mDepth = 0;
+	mDepth = 1;
 	mShiftDown = false;
 }
 
@@ -66,8 +66,8 @@ void HeatEngine::createCamera(void)
 	mCamera = mSceneMgr->createCamera("PlayerCam");
 	
 	// Position it at 500 in Z direction
-	mCamera->setNearClipDistance(5);
-	mCamera->setFarClipDistance(600);
+	mCamera->setNearClipDistance(CLOSECLIP);
+	mCamera->setFarClipDistance(FARCLIP);
 	
 	updateCamera();
 }
@@ -284,87 +284,107 @@ bool HeatEngine::keyPressed( const OIS::KeyEvent &arg )
 	}
 	else if (arg.key == OIS::KC_G)   // toggle visibility of even rarer debugging details
 	{
-	if (mDetailsPanel->getTrayLocation() == OgreBites::TL_NONE)
+		if (mDetailsPanel->getTrayLocation() == OgreBites::TL_NONE)
+		{
+			mTrayMgr->moveWidgetToTray(mDetailsPanel, OgreBites::TL_TOPRIGHT, 0);
+			mDetailsPanel->show();
+		}
+		else
+		{
+			mTrayMgr->removeWidgetFromTray(mDetailsPanel);
+			mDetailsPanel->hide();
+		}
+	}
+	else if (arg.key == OIS::KC_T)   // cycle polygon rendering mode
 	{
-		mTrayMgr->moveWidgetToTray(mDetailsPanel, OgreBites::TL_TOPRIGHT, 0);
-		mDetailsPanel->show();
+		Ogre::String newVal;
+		Ogre::TextureFilterOptions tfo;
+		unsigned int aniso;
+		
+		switch (mDetailsPanel->getParamValue(9).asUTF8()[0])
+		{
+			case 'B':
+				newVal = "Trilinear";
+				tfo = Ogre::TFO_TRILINEAR;
+				aniso = 1;
+				break;
+			case 'T':
+				newVal = "Anisotropic";
+				tfo = Ogre::TFO_ANISOTROPIC;
+				aniso = 8;
+				break;
+			case 'A':
+				newVal = "None";
+				tfo = Ogre::TFO_NONE;
+				aniso = 1;
+				break;
+			default:
+				newVal = "Bilinear";
+				tfo = Ogre::TFO_BILINEAR;
+				aniso = 1;
+		}
+		
+		Ogre::MaterialManager::getSingleton().setDefaultTextureFiltering(tfo);
+		Ogre::MaterialManager::getSingleton().setDefaultAnisotropy(aniso);
+		mDetailsPanel->setParamValue(9, newVal);
 	}
-	else
+	else if (arg.key == OIS::KC_R)   // cycle polygon rendering mode
 	{
-		mTrayMgr->removeWidgetFromTray(mDetailsPanel);
-		mDetailsPanel->hide();
+		Ogre::String newVal;
+		Ogre::PolygonMode pm;
+		
+		switch (mCamera->getPolygonMode())
+		{
+			case Ogre::PM_SOLID:
+				newVal = "Wireframe";
+				pm = Ogre::PM_WIREFRAME;
+				break;
+			case Ogre::PM_WIREFRAME:
+				newVal = "Points";
+				pm = Ogre::PM_POINTS;
+				break;
+			default:
+				newVal = "Solid";
+				pm = Ogre::PM_SOLID;
+		}
+		mCamera->setPolygonMode(pm);
+		mDetailsPanel->setParamValue(10, newVal);
 	}
+	else if(arg.key == OIS::KC_F5)   // refresh all textures
+	{
+		Ogre::TextureManager::getSingleton().reloadAll();
 	}
-    else if (arg.key == OIS::KC_T)   // cycle polygon rendering mode
-    {
-	    Ogre::String newVal;
-	    Ogre::TextureFilterOptions tfo;
-	    unsigned int aniso;
-	    
-	    switch (mDetailsPanel->getParamValue(9).asUTF8()[0])
-	    {
-		    case 'B':
-			    newVal = "Trilinear";
-			    tfo = Ogre::TFO_TRILINEAR;
-			    aniso = 1;
-			    break;
-		    case 'T':
-			    newVal = "Anisotropic";
-			    tfo = Ogre::TFO_ANISOTROPIC;
-			    aniso = 8;
-			    break;
-		    case 'A':
-			    newVal = "None";
-			    tfo = Ogre::TFO_NONE;
-			    aniso = 1;
-			    break;
-		    default:
-			    newVal = "Bilinear";
-			    tfo = Ogre::TFO_BILINEAR;
-			    aniso = 1;
-	    }
-	    
-	    Ogre::MaterialManager::getSingleton().setDefaultTextureFiltering(tfo);
-	    Ogre::MaterialManager::getSingleton().setDefaultAnisotropy(aniso);
-	    mDetailsPanel->setParamValue(9, newVal);
-    }
-    else if (arg.key == OIS::KC_R)   // cycle polygon rendering mode
-    {
-	    Ogre::String newVal;
-	    Ogre::PolygonMode pm;
-	    
-	    switch (mCamera->getPolygonMode())
-	    {
-		    case Ogre::PM_SOLID:
-			    newVal = "Wireframe";
-			    pm = Ogre::PM_WIREFRAME;
-			    break;
-		    case Ogre::PM_WIREFRAME:
-			    newVal = "Points";
-			    pm = Ogre::PM_POINTS;
-			    break;
-		    default:
-			    newVal = "Solid";
-			    pm = Ogre::PM_SOLID;
-	    }
-	    
-	    mCamera->setPolygonMode(pm);
-	    mDetailsPanel->setParamValue(10, newVal);
-    }
-    else if(arg.key == OIS::KC_F5)   // refresh all textures
-    {
-	    Ogre::TextureManager::getSingleton().reloadAll();
-    }
-    else if (arg.key == OIS::KC_SYSRQ)   // take a screenshot
-    {
-	    mWindow->writeContentsToTimestampedFile("screenshot", ".jpg");
-    }
-    else if (arg.key == OIS::KC_ESCAPE)
-    {
-	    mShutDown = true;
-    }
-    
-    return true;
+	else if (arg.key == OIS::KC_SYSRQ)   // take a screenshot
+	{
+		mWindow->writeContentsToTimestampedFile("screenshot", ".jpg");
+	}
+	else if (arg.key == OIS::KC_ESCAPE)
+	{
+		mShutDown = true;
+	}
+	else if (arg.key == OIS::KC_Q) {
+		mSim->changeMaterial(1);
+	} 
+	else if (arg.key == OIS::KC_A) {
+		mSim->changeMaterial(-1);
+	}
+	else if (arg.key == OIS::KC_W) {
+		mSim->setTool(INSERTMATERIAL);
+	}
+	else if (arg.key == OIS::KC_S) 
+	{
+		mSim->setTool(MOVE);
+	}
+	else if (arg.key == OIS::KC_E)
+	{
+		mSim->setTool(HEAT);
+	}
+	else if (arg.key == OIS::KC_D)
+	{
+		mSim->setTool(COOL);
+	}
+	
+	return true;
 }
 
 bool HeatEngine::keyReleased( const OIS::KeyEvent &arg )
@@ -393,7 +413,7 @@ bool HeatEngine::mouseMoved( const OIS::MouseEvent &arg )
 		mCamPos += movVec;
 	} else if (arg.state.Z.rel != 0) {
 		if (mKeyboard->isModifierDown(OIS::Keyboard::Shift)) {
-			mDepth = std::max(mDepth + 1 - (arg.state.Z.rel < 0)*2, 0);
+			mDepth = std::max(mDepth + 1 - (arg.state.Z.rel < 0)*2, 1);
 			std::cout << mDepth;
 		} else {
 			mCamPos *= pow(1.0001, -arg.state.Z.rel);
@@ -411,6 +431,7 @@ bool HeatEngine::mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id
 {
 	if (mTrayMgr->injectMouseDown(arg, id)) return true;
 	if (id == OIS::MB_Left) {
+		mSim->click(true);
 	}
 	return true;
 }
@@ -418,6 +439,9 @@ bool HeatEngine::mousePressed( const OIS::MouseEvent &arg, OIS::MouseButtonID id
 bool HeatEngine::mouseReleased( const OIS::MouseEvent &arg, OIS::MouseButtonID id )
 {
 	if (mTrayMgr->injectMouseUp(arg, id)) return true;
+	if (id == OIS::MB_Left) {
+		mSim->click(false);
+	}
 	return true;
 }
 
@@ -463,7 +487,7 @@ void HeatEngine::updateSimulationObj()
 		for (int x = 0; x < data->xSize; x++) {
 			for (int y = 0; y < data->ySize; y++) {
 				for (int z = 0; z < data->zSize; z++) {
-					if (data->area[x][y][z]->mState == s_cast) {
+					if (data->area[x][y][z]->mState == s_cast && data->area[x][y][z]->mHover) {
 						manObjBoxAdd(mObjs, Ogre::Vector3(x, y, z)*TILESIZE, &count);
 					}
 				}
