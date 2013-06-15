@@ -12,6 +12,7 @@ public:
 	bool mSelected, mHover;
 	double dH[2];
 	virtual ~Area();
+	void swap(Area *area);
 };
 
 #endif // AREA_H

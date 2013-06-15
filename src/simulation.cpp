@@ -20,6 +20,7 @@ Simulation::Simulation(int x, int y, int z)
 void Simulation::commonInit()
 {
 	initSimArea();
+	mData.lastX = mData.lastY = mData.lastZ = -1;
 	mData.latest = mData.click = false;
 	mData.curMat = 0;
 	mData.tool = INSERTMATERIAL;
@@ -50,19 +51,17 @@ void Simulation::tick(Ogre::Real dt)
 
 void Simulation::handleMouseState()
 {
-	if (mPreviousHover == nullptr || !mData.click) {
+	if (mHover == nullptr || !mData.click) {
 		return;
 	}
 	if (mData.tool == HEAT) {
-		mPreviousHover->dH[mData.latest] += 5;
-		std::cout << mPreviousHover->dH[mData.latest] << std::endl;
+		mHover->dH[mData.latest] += 5;
 	} else if (mData.tool == COOL) {
-		mPreviousHover->dH[mData.latest] -= 5;
-		std::cout << mPreviousHover->dH[mData.latest] << std::endl;
+		mHover->dH[mData.latest] -= 5;
 	} else if (mData.tool == INSERTMATERIAL) {
-		if (mPreviousHover->mMat != mData.curMat) {
-			mPreviousHover->mMat = mData.curMat;
-			mPreviousHover->dH[mData.latest] = DEFAULTTEMP;
+		if (mHover->mMat != mData.curMat) {
+			mHover->mMat = mData.curMat;
+			mHover->dH[mData.latest] = DEFAULTTEMP;
 		}
 	}
 }
@@ -71,7 +70,7 @@ void Simulation::handleMouseState()
 
 void Simulation::initSimArea()
 {
-	mPreviousHover = nullptr;
+	mHover = nullptr;
 	mData.area = new Area***[mData.xSize];
 	for (int x = 0; x < mData.xSize; x++) {
 		mData.area[x] = new Area**[mData.ySize];
@@ -100,18 +99,19 @@ void Simulation::freeSimArea()
 
 void Simulation::injectDepthAndMouse(int depth, Ogre::Vector3 camPos, Ogre::Vector3 dir)
 {
-	if (mPreviousHover != nullptr) {
-		mPreviousHover->mHover = false;
+	Area *previous = mHover;
+	if (mHover != nullptr) {
+		mHover->mHover = false;
 	}
 	int startDepth = depth;
 	int steps = FARCLIP-CLOSECLIP+200;
-	int prevX, prevY, prevZ;
-	prevX = prevY = prevZ = -1;
+	int newX, newY, newZ;
+	newX = newY = newZ = -1;
 	while (steps > 0) {
-		Ogre::Vector3 simPos = camPos/TILESIZE + 1;
-		int curX = simPos.x, curY = simPos.y, curZ = simPos.z;
+		Ogre::Vector3 simPos = camPos/TILESIZE;
+		int curX = std::floor(simPos.x), curY = std::floor(simPos.y), curZ = std::floor(simPos.z);
 		bool withinArea = mData.withinArea(simPos);
-		if (withinArea && (curX != prevX || curY != prevY || curZ != prevZ)) {
+		if (withinArea && (curX != newX || curY != newY || curZ != newZ)) {
 			depth--;
 		}
 		camPos += dir;
@@ -120,18 +120,92 @@ void Simulation::injectDepthAndMouse(int depth, Ogre::Vector3 camPos, Ogre::Vect
 		{
 			break;
 		}
-		prevX = curX; prevY = curY; prevZ = curZ;
+		newX = curX; newY = curY; newZ = curZ;
 		if (depth == 0) {
 			break;
 		}
 	}
-	if (!mData.withinArea(prevX, prevY, prevZ)) {
-		mPreviousHover = nullptr;
+	if (!mData.withinArea(newX, newY, newZ)) {
+		mData.lastX = mData.lastY = mData.lastZ = -1;
+		mHover = nullptr;
 		return;
 	}
-	std::cout << prevX << " " << prevY << " " << prevZ << std::endl;
-	mPreviousHover = mData.area[prevX][prevY][prevZ];
-	mPreviousHover->mHover = true;
+	mHover = mData.area[newX][newY][newZ];
+	mHover->mHover = true;
+	if (mData.click && mData.tool == MOVE && previous != mHover && previous != nullptr && mHover != nullptr) {
+		moveObject(mData.lastX, mData.lastY, mData.lastZ, newX, newY, newZ);
+	}
+	mData.lastX = newX; mData.lastY = newY; mData.lastZ = newZ;
+}
+
+void Simulation::moveObject(int fx, int fy, int fz, int tx, int ty, int tz)
+{
+	int diff[3];
+	diff[0] = tx-fx; diff[1] = ty-fy; diff[2] = tz-fz;
+	int curPos[3];
+	curPos[0] = fx; curPos[1] = fy; curPos[2] = fz;
+	for (int i = 0; i < 3; i++) {
+		while (diff[i] != 0) {
+			int step = 1-2*(diff[i] > 0);
+			moveObjectIter(curPos[0], curPos[1], curPos[2], curPos[0]-step*(i==0), curPos[1]-step*(i==1), curPos[2]-step*(i==2));
+			curPos[i]-=step;
+			diff[i]+=step;
+		}
+	}
+}
+void Simulation::moveObjectIter(int fx, int fy, int fz, int tx, int ty, int tz)
+{
+	// Fetch selected blocks
+	std::vector<std::tuple<int, int, int>> selection;
+	fill(selection, fx, fy, fz, mHover->mMat);
+	int dx, dy, dz;
+	dx = tx-fx; dy = ty-fy; dz = tz-fz;
+	
+	// Check if movement is possible
+	for (auto itr = selection.begin(); itr != selection.end(); itr++) {
+		int x = std::get<0>(*itr) + dx;
+		int y = std::get<1>(*itr) + dy;
+		int z = std::get<2>(*itr) + dz;
+		if (!mData.withinArea(x, y, z)) {
+			return;
+		}
+	}
+	
+	// Execute movement
+	for (auto itr = selection.begin(); itr != selection.end(); itr++) {
+		int x = std::get<0>(*itr);
+		int y = std::get<1>(*itr);
+		int z = std::get<2>(*itr);
+		Area *tmp = mData.area[x][y][z];
+		mData.area[x][y][z] = mData.area[x+dx][y+dy][z+dz];
+		mData.area[x+dx][y+dy][z+dz] = tmp;
+	}
+}
+
+void Simulation::fill(std::vector< std::tuple< int, int, int > > &selection, int x, int y, int z, int mat)
+{
+	if (mData.area[x][y][z]->mState == GAS || mData.area[x][y][z]->mState == LIQUID) {
+		return;
+	}
+	auto pos = std::tuple<int, int, int>(x,y,z);
+	for (auto itr = selection.begin(); itr != selection.end(); itr++) {
+		if (*itr == pos) {
+			return;
+		}
+	}
+	selection.push_back(pos);
+	for (int dx = -1; dx < 2; dx++) {
+		for (int dy = -1; dy < 2; dy++) {
+			for (int dz = -1; dz < 2; dz++) {
+				if ((dx == 0) + (dy == 0) + (dz == 0) != 2) {
+					continue;
+				}
+				if (mData.withinArea(x+dx, y+dy, z+dz)) {
+					fill(selection, x+dx, y+dy, z+dz, mat);
+				}
+			}
+		}
+	}
 }
 
 void Simulation::click(bool state)

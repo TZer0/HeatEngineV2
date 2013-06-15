@@ -487,7 +487,9 @@ void HeatEngine::updateSimulationObj()
 		for (int x = 0; x < data->xSize; x++) {
 			for (int y = 0; y < data->ySize; y++) {
 				for (int z = 0; z < data->zSize; z++) {
-					if (data->area[x][y][z]->mState == s_cast && data->area[x][y][z]->mHover) {
+					Area *area = data->area[x][y][z];
+					State s = area->mState;
+					if (s == s_cast && (s == SOLID || area->mHover)) {
 						manObjBoxAdd(mObjs, Ogre::Vector3(x, y, z)*TILESIZE, &count);
 					}
 				}
