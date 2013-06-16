@@ -75,7 +75,7 @@ protected:
 	void windowClosed(Ogre::RenderWindow* rw);
 	
 	void updateCamera();
-	void updateEnginePanel();
+	void updateEnginePanels();
 	
 	void updateSimulationObj();
 	void updateWallObj();
@@ -92,7 +92,7 @@ protected:
 	// OgreBites
 	OgreBites::SdkTrayManager* mTrayMgr;
 	OgreBites::ParamsPanel* mDetailsPanel;     // sample details panel
-	OgreBites::ParamsPanel* mEnginePanel;
+	OgreBites::ParamsPanel *mEnginePanel, *mToolPanel;
 	bool mCursorWasVisible;                    // was cursor visible before dialog appeared
 	bool mShutDown;
 	

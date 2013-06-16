@@ -13,6 +13,7 @@ public:
 	bool latest, click;
 	std::vector<Material> materials;
 	SimTool tool;
+	Ogre::Real time;
 	Area ****area;
 	bool withinArea(Ogre::Vector3 pos) {
 		return withinArea(std::floor(pos.x), std::floor(pos.y), std::floor(pos.z));

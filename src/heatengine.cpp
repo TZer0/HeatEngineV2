@@ -131,30 +131,62 @@ void HeatEngine::createFrameListener(void)
 	engineItems.push_back("Selected box");
 	engineItems.push_back("State");
 	engineItems.push_back("Heat");
+	engineItems.push_back("Time");
+	engineItems.push_back("Selection depth");
+	for (int i = 0; i < 3; i++) {
+		engineItems.push_back(StateStrings[i]);
+	}
 	mEnginePanel = mTrayMgr->createParamsPanel(OgreBites::TL_NONE, "EnginePanel", 200, engineItems);	
 	mTrayMgr->moveWidgetToTray(mEnginePanel, OgreBites::TL_TOPLEFT, 0);
 	mEnginePanel->show();
 	
+	
+	Ogre::StringVector toolItems;
+	mToolPanel = mTrayMgr->createParamsPanel(OgreBites::TL_NONE, "ToolPanel", 300, 3);
+	mTrayMgr->moveWidgetToTray(mToolPanel, OgreBites::TL_TOPRIGHT);
+	mToolPanel->show();
+	
 	mRoot->addFrameListener(this);
 }
 
-void HeatEngine::updateEnginePanel()
+void HeatEngine::updateEnginePanels()
 {
 	CommonData *data = mSim->getData();
 	int x = data->lastX; int y = data->lastY; int z = data->lastZ;
-	Ogre::StringVector paramVals;
+	Ogre::StringVector engineParams, toolParams, toolItems;
 	if (data->withinArea(x,y,z)) {
 		Area *ar = data->area[x][y][z];
-		paramVals.push_back(Ogre::StringConverter::toString(x) + " " +
+		engineParams.push_back(Ogre::StringConverter::toString(x) + " " +
 			Ogre::StringConverter::toString(y) + " " + Ogre::StringConverter::toString(z));
-		paramVals.push_back(StateStrings[ar->mState]);
-		paramVals.push_back(Ogre::StringConverter::toString((Ogre::Real)ar->dH[data->latest]));
+		engineParams.push_back(StateStrings[ar->mState]);
+		engineParams.push_back(Ogre::StringConverter::toString((Ogre::Real)ar->dH[data->latest]));
 	} else {
-		paramVals.push_back("None");
-		paramVals.push_back("-");
-		paramVals.push_back("-");
+		engineParams.push_back("None");
+		engineParams.push_back("-");
+		engineParams.push_back("-");
 	}
-	mEnginePanel->setAllParamValues(paramVals);
+	engineParams.push_back(Ogre::StringConverter::toString(data->time));
+	engineParams.push_back(Ogre::StringConverter::toString(mDepth));
+	for (int i = 0; i < 3; i++) {
+		if (mHideState[i]) {
+			engineParams.push_back("Shown");
+		} else {
+			engineParams.push_back("Hidden");
+		}
+	}
+	
+	toolItems.push_back("Selected tool");
+	toolParams.push_back(SimToolStrings[data->tool]);
+	if (data->tool == INSERTMATERIAL) {
+		toolItems.push_back("Selected material");
+		toolItems.push_back("Available materials");
+		toolParams.push_back(Ogre::StringConverter::toString(data->curMat+1) + ":" + data->materials.at(data->curMat).mName);
+		toolParams.push_back(Ogre::StringConverter::toString(data->materials.size()));
+	}
+	
+	mEnginePanel->setAllParamValues(engineParams);
+	mToolPanel->setAllParamNames(toolItems);
+	mToolPanel->setAllParamValues(toolParams);
 }
 
 void HeatEngine::createScene(void) 
@@ -169,6 +201,7 @@ void HeatEngine::createScene(void)
 
 void HeatEngine::destroyScene(void)
 {
+	
 }
 
 void HeatEngine::createViewports(void)
@@ -268,7 +301,7 @@ bool HeatEngine::setup(void)
 bool HeatEngine::frameRenderingQueued(const Ogre::FrameEvent& evt)
 {
 	updateCamera();
-	updateEnginePanel();
+	updateEnginePanels();
 	
 	if(mWindow->isClosed()) {
 		return false;
@@ -315,7 +348,7 @@ bool HeatEngine::keyPressed( const OIS::KeyEvent &arg )
 	{
 		if (mDetailsPanel->getTrayLocation() == OgreBites::TL_NONE)
 		{
-			mTrayMgr->moveWidgetToTray(mDetailsPanel, OgreBites::TL_TOPRIGHT, 0);
+			mTrayMgr->moveWidgetToTray(mDetailsPanel, OgreBites::TL_BOTTOMRIGHT, 0);
 			mDetailsPanel->show();
 		}
 		else
@@ -392,10 +425,14 @@ bool HeatEngine::keyPressed( const OIS::KeyEvent &arg )
 		mShutDown = true;
 	}
 	else if (arg.key == OIS::KC_Q) {
-		mSim->changeMaterial(1);
+		if (mSim->getData()->tool == INSERTMATERIAL) {
+			mSim->changeMaterial(1);
+		}
 	} 
 	else if (arg.key == OIS::KC_A) {
-		mSim->changeMaterial(-1);
+		if (mSim->getData()->tool == INSERTMATERIAL) {
+			mSim->changeMaterial(-1);
+		}
 	}
 	else if (arg.key == OIS::KC_W) {
 		mSim->setTool(INSERTMATERIAL);

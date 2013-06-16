@@ -5,7 +5,7 @@ Simulation::Simulation()
 	mData.xSize = mData.ySize = mData.zSize = 10;
 	mData.latest = 0;
 	mData.materials.push_back(Material());
-	mData.materials.push_back(Material(273.15, 373.15, 10));
+	mData.materials.push_back(Material(273.15, 373.15, 10, "Water"));
 	commonInit();
 }
 
@@ -20,6 +20,7 @@ Simulation::Simulation(int x, int y, int z)
 void Simulation::commonInit()
 {
 	initSimArea();
+	mData.time = 0;
 	mData.lastX = mData.lastY = mData.lastZ = -1;
 	mData.latest = mData.click = false;
 	mData.curMat = 0;
@@ -28,6 +29,7 @@ void Simulation::commonInit()
 
 void Simulation::tick(Ogre::Real dt)
 {
+	mData.time += dt;
 	mData.latest = !mData.latest;
 	handleMouseState(dt);
 	bool ind = mData.latest;
