@@ -131,6 +131,9 @@ void HeatEngine::createFrameListener(void)
 	engineItems.push_back("Selected box");
 	engineItems.push_back("State");
 	engineItems.push_back("Heat");
+	engineItems.push_back("Freezing point");
+	engineItems.push_back("Melting point");
+	engineItems.push_back("Material");
 	engineItems.push_back("Time");
 	engineItems.push_back("Selection depth");
 	for (int i = 0; i < 3; i++) {
@@ -142,7 +145,7 @@ void HeatEngine::createFrameListener(void)
 	
 	
 	Ogre::StringVector toolItems;
-	mToolPanel = mTrayMgr->createParamsPanel(OgreBites::TL_NONE, "ToolPanel", 300, 3);
+	mToolPanel = mTrayMgr->createParamsPanel(OgreBites::TL_NONE, "ToolPanel", 300, 5);
 	mTrayMgr->moveWidgetToTray(mToolPanel, OgreBites::TL_TOPRIGHT);
 	mToolPanel->show();
 	
@@ -156,12 +159,20 @@ void HeatEngine::updateEnginePanels()
 	Ogre::StringVector engineParams, toolParams, toolItems;
 	if (data->withinArea(x,y,z)) {
 		Area *ar = data->area[x][y][z];
+		Material mat = data->materials.at(ar->mMat);
 		engineParams.push_back(Ogre::StringConverter::toString(x) + " " +
 			Ogre::StringConverter::toString(y) + " " + Ogre::StringConverter::toString(z));
 		engineParams.push_back(StateStrings[ar->mState]);
 		engineParams.push_back(Ogre::StringConverter::toString((Ogre::Real)ar->dH[data->latest]));
+		for (int i = 0; i < 2; i++) {
+			engineParams.push_back(Ogre::StringConverter::toString((Ogre::Real)mat.mTransPoints[i]));
+		}
+		engineParams.push_back(Ogre::StringConverter::toString(data->curMat+1) + ":" + mat.mName);
 	} else {
 		engineParams.push_back("None");
+		engineParams.push_back("-");
+		engineParams.push_back("-");
+		engineParams.push_back("-");
 		engineParams.push_back("-");
 		engineParams.push_back("-");
 	}
@@ -178,9 +189,15 @@ void HeatEngine::updateEnginePanels()
 	toolItems.push_back("Selected tool");
 	toolParams.push_back(SimToolStrings[data->tool]);
 	if (data->tool == INSERTMATERIAL) {
+		Material mat = data->materials.at(data->curMat);
+		toolItems.push_back("Freezing point");
+		toolItems.push_back("Melting point point");
 		toolItems.push_back("Selected material");
 		toolItems.push_back("Available materials");
-		toolParams.push_back(Ogre::StringConverter::toString(data->curMat+1) + ":" + data->materials.at(data->curMat).mName);
+		for (int i = 0; i < 2; i++) {
+			toolParams.push_back(Ogre::StringConverter::toString((Ogre::Real)mat.mTransPoints[i]));
+		}
+		toolParams.push_back(Ogre::StringConverter::toString(data->curMat+1) + ":" + mat.mName);
 		toolParams.push_back(Ogre::StringConverter::toString(data->materials.size()));
 	}
 	
