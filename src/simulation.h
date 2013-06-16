@@ -34,14 +34,13 @@ public:
 	RenderData *getData() { return &mData; }
 	void injectDepthAndMouse(int depth, Ogre::Vector3 camPos, Ogre::Vector3 dir);
 	void click(bool state);
-	Area *mHover;
 	void changeMaterial(int dM) { mData.curMat = std::max(std::min((int)mData.materials.size()-1, mData.curMat+dM), 0); }
 	void setTool(SimTool tool) { mData.tool = tool; }
 private:
 	void moveObjectIter(int fx, int fy, int fz, int tx, int ty, int tz);
 	void moveObject(int fx, int fy, int fz, int tx, int ty, int tz);
 	void fill(std::vector<std::tuple<int, int, int>> &selection, int x, int y, int z, int mat);
-	void handleMouseState();
+	void handleMouseState(Ogre::Real dt);
 	void commonInit();
 	void freeSimArea();
 	void initSimArea();

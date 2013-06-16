@@ -11,7 +11,7 @@ public:
 	Material();
 	Material(double solid, double liquid, double cap);
 	virtual ~Material();
-	std::vector<double> mTransPoints;
+	double mTransPoints[3];
 	State getState(double h);
 	double mCap;
 };

@@ -20,7 +20,8 @@ HeatEngine::HeatEngine(void)
 	mCamPos = Ogre::Vector3(200, 200, 200);
 	mLookPos = Ogre::Vector3(0,0,0);
 	mDepth = 1;
-	mShiftDown = false;
+	mHideState[0] = mHideState[1] = mShiftDown = false;
+	mHideState[2] = true;
 }
 
 
@@ -382,6 +383,15 @@ bool HeatEngine::keyPressed( const OIS::KeyEvent &arg )
 	else if (arg.key == OIS::KC_D)
 	{
 		mSim->setTool(COOL);
+	} 
+	else if (arg.key == OIS::KC_1) {
+		mHideState[0] = !mHideState[0];
+	}
+	else if (arg.key == OIS::KC_2) {
+		mHideState[1] = !mHideState[1];
+	}
+	else if (arg.key == OIS::KC_3) {
+		mHideState[2] = !mHideState[2];
 	}
 	
 	return true;
@@ -414,7 +424,6 @@ bool HeatEngine::mouseMoved( const OIS::MouseEvent &arg )
 	} else if (arg.state.Z.rel != 0) {
 		if (mKeyboard->isModifierDown(OIS::Keyboard::Shift)) {
 			mDepth = std::max(mDepth + 1 - (arg.state.Z.rel < 0)*2, 1);
-			std::cout << mDepth;
 		} else {
 			mCamPos *= pow(1.0001, -arg.state.Z.rel);
 			if (mCamPos.length() < 10) {
@@ -477,33 +486,55 @@ void HeatEngine::windowClosed(Ogre::RenderWindow* rw)
 void HeatEngine::updateSimulationObj()
 {
 	RenderData *data = mSim->getData();
+	mObjs->clear();
 	mObjs->estimateVertexCount(data->xSize*data->ySize*data->zSize*6);
 	mObjs->estimateIndexCount(data->xSize*data->ySize*data->zSize*6);
-	mObjs->clear();
-	mObjs->begin("defaultwall");
-	uint count = 0;
-	for (int s = 0; s <= State::GAS; s++) {
+	for (int s = 0; s <= State::UNDEFINED; s++) {
+		uint count = 0;
 		State s_cast = (State) s;
+		if (s == SOLID) {
+			mObjs->begin("solidgradient");
+		} else if (s == LIQUID) {
+			mObjs->begin("liquidgradient");
+		} else if (s == GAS) {
+			mObjs->begin("gasgradient");
+		} else if (s == UNDEFINED) {
+			mObjs->begin("selection");
+		}
 		for (int x = 0; x < data->xSize; x++) {
 			for (int y = 0; y < data->ySize; y++) {
 				for (int z = 0; z < data->zSize; z++) {
 					Area *area = data->area[x][y][z];
-					State s = area->mState;
-					if (s == s_cast && (s == SOLID || area->mHover)) {
-						manObjBoxAdd(mObjs, Ogre::Vector3(x, y, z)*TILESIZE, &count);
+					State aState = area->mState;
+					if (((aState == s_cast && s_cast != UNDEFINED) && (!mHideState[s] && !area->mHover))
+						|| (s_cast == UNDEFINED && area->mHover)) {
+						double *trans = data->materials.at(area->mMat).mTransPoints;
+						double H = area->dH[data->latest];
+						double texPos = 0;
+						switch(s_cast) {
+							case UNDEFINED:
+								texPos = 0.5;
+								break;
+							default:
+								H -= trans[s-1];
+							case SOLID:
+								texPos = H / trans[s];
+						}
+						std::cout <<  texPos << std::endl;
+						manObjBoxAdd(mObjs, Ogre::Vector3(x, y, z)*TILESIZE, &count, BOX, true, texPos);
 					}
 				}
 			}
 		}
+		mObjs->end();
 	}
-	mObjs->end();
 }
 
 void HeatEngine::updateWallObj()
 {
 	RenderData *data = mSim->getData();
 	mWalls->clear();
-	mWalls->begin("speedtile");
+	mWalls->begin("defaultwall");
 	uint count = 0;
 	for (int x = 0; x < data->xSize; x++) {
 		for (int y = 0; y < data->ySize; y++ ){
@@ -523,8 +554,15 @@ void HeatEngine::updateWallObj()
 	mWalls->end();
 }
 
-void HeatEngine::manObjBoxAdd(Ogre::ManualObject *obj, Ogre::Vector3 pos, uint *count, AddMode mode)
+void HeatEngine::manObjBoxAdd(Ogre::ManualObject *obj, Ogre::Vector3 pos, uint *count, AddMode mode, bool useOverride, Ogre::Real overrideTex)
 {
+	if (useOverride) {
+		if (overrideTex >= 1) {
+			overrideTex = 0.99;
+		} else if (overrideTex <= 0) {
+			overrideTex = 0.01;
+		}
+	}
 	uint i = 0;
 	uint lim = boxPositions.size();
 	if (mode == BOX) {
@@ -541,20 +579,24 @@ void HeatEngine::manObjBoxAdd(Ogre::ManualObject *obj, Ogre::Vector3 pos, uint *
 	{
 		*count += 4;
 		obj->position(boxPositions[i] + pos);
-		useTexCoord(obj, 0);
+		useTexCoord(obj, 0, useOverride, overrideTex);
 		obj->position(boxPositions[i+1] + pos);
-		useTexCoord(obj, 1);
+		useTexCoord(obj, 1, useOverride, overrideTex);
 		obj->position(boxPositions[i+2] + pos);
-		useTexCoord(obj, 2);
+		useTexCoord(obj, 2, useOverride, overrideTex);
 		obj->position(boxPositions[i+3] + pos);
-		useTexCoord(obj, 3);
+		useTexCoord(obj, 3, useOverride, overrideTex);
 		obj->quad(*count-1, *count-2, *count-3, *count-4);
 	}
 }
 
 
-void HeatEngine::useTexCoord(Ogre::ManualObject *obj, int c)
+void HeatEngine::useTexCoord(Ogre::ManualObject *obj, int c, bool useOverride, Ogre::Real overrideTex)
 {
+	if (useOverride) {
+		obj->textureCoord(overrideTex, 0.5, 0);
+		return;
+	}
 	switch(c) {
 		case 0:
 			obj->textureCoord(0,1,0);

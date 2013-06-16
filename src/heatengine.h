@@ -78,8 +78,8 @@ protected:
 	
 	void updateSimulationObj();
 	void updateWallObj();
-	void manObjBoxAdd(Ogre::ManualObject *obj, Ogre::Vector3 pos, uint *count, AddMode mode = BOX);
-	void useTexCoord(Ogre::ManualObject *obj, int c);
+	void manObjBoxAdd(Ogre::ManualObject *obj, Ogre::Vector3 pos, uint *count, AddMode mode = BOX, bool useOverride = false, Ogre::Real overrideTex = -1);
+	void useTexCoord(Ogre::ManualObject *obj, int c, bool useOverride = false, Ogre::Real overrideTex = -1);
 	
 	Ogre::Root *mRoot;
 	Ogre::Camera* mCamera;
@@ -104,6 +104,7 @@ protected:
 	Simulation *mSim;
 	int mDepth;
 	bool mShiftDown;
+	bool mHideState[3];
 	
 	// Camera variables
 	Ogre::Vector3 mCamPos;
