@@ -7,7 +7,7 @@
 #include "area.h"
 #include "material.h"
 
-class RenderData {
+class CommonData {
 public:
 	int xSize, ySize, zSize, curMat, lastX, lastY, lastZ;
 	bool latest, click;
@@ -31,7 +31,7 @@ public:
 	Simulation(int x, int y, int z);
 	virtual ~Simulation();
 	void tick(Ogre::Real dt);
-	RenderData *getData() { return &mData; }
+	CommonData *getData() { return &mData; }
 	void injectDepthAndMouse(int depth, Ogre::Vector3 camPos, Ogre::Vector3 dir);
 	void click(bool state);
 	void changeMaterial(int dM) { mData.curMat = std::max(std::min((int)mData.materials.size()-1, mData.curMat+dM), 0); }
@@ -44,7 +44,7 @@ private:
 	void commonInit();
 	void freeSimArea();
 	void initSimArea();
-	RenderData mData;
+	CommonData mData;
 };
 
 #endif // SIMULATION_H

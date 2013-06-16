@@ -127,7 +127,34 @@ void HeatEngine::createFrameListener(void)
 	mDetailsPanel->setParamValue(10, "Solid");
 	mDetailsPanel->hide();
 	
+	Ogre::StringVector engineItems;
+	engineItems.push_back("Selected box");
+	engineItems.push_back("State");
+	engineItems.push_back("Heat");
+	mEnginePanel = mTrayMgr->createParamsPanel(OgreBites::TL_NONE, "EnginePanel", 200, engineItems);	
+	mTrayMgr->moveWidgetToTray(mEnginePanel, OgreBites::TL_TOPLEFT, 0);
+	mEnginePanel->show();
+	
 	mRoot->addFrameListener(this);
+}
+
+void HeatEngine::updateEnginePanel()
+{
+	CommonData *data = mSim->getData();
+	int x = data->lastX; int y = data->lastY; int z = data->lastZ;
+	Ogre::StringVector paramVals;
+	if (data->withinArea(x,y,z)) {
+		Area *ar = data->area[x][y][z];
+		paramVals.push_back(Ogre::StringConverter::toString(x) + " " +
+			Ogre::StringConverter::toString(y) + " " + Ogre::StringConverter::toString(z));
+		paramVals.push_back(StateStrings[ar->mState]);
+		paramVals.push_back(Ogre::StringConverter::toString((Ogre::Real)ar->dH[data->latest]));
+	} else {
+		paramVals.push_back("None");
+		paramVals.push_back("-");
+		paramVals.push_back("-");
+	}
+	mEnginePanel->setAllParamValues(paramVals);
 }
 
 void HeatEngine::createScene(void) 
@@ -241,6 +268,7 @@ bool HeatEngine::setup(void)
 bool HeatEngine::frameRenderingQueued(const Ogre::FrameEvent& evt)
 {
 	updateCamera();
+	updateEnginePanel();
 	
 	if(mWindow->isClosed()) {
 		return false;
@@ -485,7 +513,7 @@ void HeatEngine::windowClosed(Ogre::RenderWindow* rw)
 
 void HeatEngine::updateSimulationObj()
 {
-	RenderData *data = mSim->getData();
+	CommonData *data = mSim->getData();
 	mObjs->clear();
 	mObjs->estimateVertexCount(data->xSize*data->ySize*data->zSize*6);
 	mObjs->estimateIndexCount(data->xSize*data->ySize*data->zSize*6);
@@ -520,7 +548,6 @@ void HeatEngine::updateSimulationObj()
 							case SOLID:
 								texPos = H / trans[s];
 						}
-						std::cout <<  texPos << std::endl;
 						manObjBoxAdd(mObjs, Ogre::Vector3(x, y, z)*TILESIZE, &count, BOX, true, texPos);
 					}
 				}
@@ -532,7 +559,7 @@ void HeatEngine::updateSimulationObj()
 
 void HeatEngine::updateWallObj()
 {
-	RenderData *data = mSim->getData();
+	CommonData *data = mSim->getData();
 	mWalls->clear();
 	mWalls->begin("defaultwall");
 	uint count = 0;
