@@ -471,13 +471,12 @@ bool HeatEngine::mouseMoved( const OIS::MouseEvent &arg )
 {
 	if (mTrayMgr->injectMouseMove(arg)) return true;
 	Ogre::Vector3 diff = mLookPos-mCamPos;
-	Ogre::Vector3 mirrorDiff;
-	mirrorDiff.y = diff.y = 0;
+	diff.y = 0;
 	diff.normalise();
-	Ogre::Vector2 tmp;
-	mirrorDiff.x = -diff.x;
-	mirrorDiff.z = diff.z;
-	Ogre::Vector3 movVec = diff*arg.state.Y.rel + mirrorDiff*arg.state.X.rel;
+	Ogre::Vector3 rotDiff = Ogre::Quaternion(Ogre::Degree(90), Ogre::Vector3::UNIT_Y)*diff;
+	rotDiff.y = 0;
+	rotDiff.normalise();
+	Ogre::Vector3 movVec = diff*arg.state.Y.rel + rotDiff*arg.state.X.rel;
 	if (movVec.length() > 100) {
 		return true;
 	}
