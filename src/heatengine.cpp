@@ -79,9 +79,13 @@ HeatEngine::HeatEngine(char *file)
 				std::cout << "Error in block[" << i << "], size expected: 8, got: " << blockProps.size() << std::endl;
 				throw;
 			}
-			std::vector<int> props;
+			std::vector<uint> props;
 			for (uint j = 0; j < 7; j++) {
 				props.push_back(Ogre::StringConverter::parseInt(blockProps[j]));
+			}
+			if (props[6] < 0 || props[6] >= mats.size()) {
+				std::cout << "Skipping block[" << i << "], not such material: " << props[6] << std::endl;
+				continue;
 			}
 			double temp = Ogre::StringConverter::parseReal(blockProps[7]);
 			mSim->insertMaterialBlock(props[0], props[1], props[2], props[3], props[4], props[5], props[6], temp);

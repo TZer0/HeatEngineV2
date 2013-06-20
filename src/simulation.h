@@ -40,11 +40,11 @@ public:
 	void setTool(SimTool tool) { mData.tool = tool; }
 	void insertMaterialBlock(int fx, int fy, int fz, int tx, int ty, int tz, int mat, double temp);
 private:
-	void moveObjectIter(int fx, int fy, int fz, int tx, int ty, int tz);
 	void moveObject(int fx, int fy, int fz, int tx, int ty, int tz);
 	void updateLinks(int x, int y, int z, bool freeze = true);
 	void fill(std::vector<std::tuple<int, int, int>> &selection, int x, int y, int z, int mat);
 	void handleMouseState(Ogre::Real dt);
+	void deselect(std::vector<std::tuple<int, int, int>> &selection);
 	void commonInit();
 	void freeSimArea();
 	void initSimArea();

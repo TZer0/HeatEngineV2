@@ -157,21 +157,6 @@ void Simulation::injectDepthAndMouse(int depth, Ogre::Vector3 camPos, Ogre::Vect
 
 void Simulation::moveObject(int fx, int fy, int fz, int tx, int ty, int tz)
 {
-	int diff[3];
-	diff[0] = tx-fx; diff[1] = ty-fy; diff[2] = tz-fz;
-	int curPos[3];
-	curPos[0] = fx; curPos[1] = fy; curPos[2] = fz;
-	for (int i = 0; i < 3; i++) {
-		while (diff[i] != 0) {
-			int step = 1-2*(diff[i] > 0);
-			moveObjectIter(curPos[0], curPos[1], curPos[2], curPos[0]-step*(i==0), curPos[1]-step*(i==1), curPos[2]-step*(i==2));
-			curPos[i]-=step;
-			diff[i]+=step;
-		}
-	}
-}
-void Simulation::moveObjectIter(int fx, int fy, int fz, int tx, int ty, int tz)
-{
 	// Fetch selected blocks
 	std::vector<std::tuple<int, int, int>> selection;
 	Area *ar = mData.area[fx][fy][fz];
@@ -179,18 +164,27 @@ void Simulation::moveObjectIter(int fx, int fy, int fz, int tx, int ty, int tz)
 		fill(selection, fx, fy, fz, mData.area[fx][fy][fz]->mMat);
 	} else if (ar->mState == LIQUID) {
 		selection.push_back(std::tuple<int, int, int>(fx, fy, fz));
+		ar->mSelected = true;
 	} else {
 		return;
 	}
 	int dx, dy, dz, mat;
 	dx = tx-fx; dy = ty-fy; dz = tz-fz;
 	mat = ar->mMat;
+	
 	// Check if movement is possible
 	for (auto itr = selection.begin(); itr != selection.end(); itr++) {
 		int x = std::get<0>(*itr) + dx;
 		int y = std::get<1>(*itr) + dy;
 		int z = std::get<2>(*itr) + dz;
 		if (!mData.withinArea(x, y, z)) {
+			deselect(selection);
+			return;
+		}
+		
+		Area *ar = mData.area[x][y][z];
+		if (!ar->mSelected && ar->mState != GAS) {
+			deselect(selection);
 			return;
 		}
 	}
@@ -225,6 +219,17 @@ void Simulation::moveObjectIter(int fx, int fy, int fz, int tx, int ty, int tz)
 			to->mLinks[i] = from->mLinksTmp[i];
 		}
 	}
+	deselect(selection);
+}
+
+void Simulation::deselect(std::vector< std::tuple< int, int, int > >& selection)
+{
+	for (auto itr = selection.begin(); itr != selection.end(); itr++) {
+		int x = std::get<0>(*itr);
+		int y = std::get<1>(*itr);
+		int z = std::get<2>(*itr);
+		mData.area[x][y][z]->mSelected = false;
+	}
 }
 
 void Simulation::fill(std::vector< std::tuple< int, int, int > > &selection, int x, int y, int z, int mat)
@@ -239,6 +244,7 @@ void Simulation::fill(std::vector< std::tuple< int, int, int > > &selection, int
 			return;
 		}
 	}
+	ar->mSelected = true;
 	selection.push_back(pos);
 	for (int i = 0; i < 3; i++) {
 		std::tuple<int, int, int> rel = relativePositions[i];
