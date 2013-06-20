@@ -1,6 +1,6 @@
 #include "heatengine.h"
 
-HeatEngine::HeatEngine(void)
+HeatEngine::HeatEngine(char *file)
 	: mRoot(0),
 	mCamera(0),
 	mSceneMgr(0),

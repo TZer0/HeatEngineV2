@@ -39,7 +39,7 @@ std::array<Ogre::Vector3, 24> boxPositions = {{
 class HeatEngine : public Ogre::FrameListener, public Ogre::WindowEventListener, public OIS::KeyListener, public OIS::MouseListener, OgreBites::SdkTrayListener
 {
 public:
-	HeatEngine(void);
+	HeatEngine(char *file = nullptr);
 	~HeatEngine(void);
 	
 	void go(void);

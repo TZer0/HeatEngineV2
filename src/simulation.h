@@ -4,9 +4,10 @@
 #include<OgrePrerequisites.h>
 #include<OgreVector3.h>
 #include<boost/tuple/tuple.hpp>
+#include<array>
 #include "area.h"
 #include "material.h"
-
+	
 class CommonData {
 public:
 	int xSize, ySize, zSize, curMat, lastX, lastY, lastZ;
@@ -40,6 +41,7 @@ public:
 private:
 	void moveObjectIter(int fx, int fy, int fz, int tx, int ty, int tz);
 	void moveObject(int fx, int fy, int fz, int tx, int ty, int tz);
+	void updateLinks(int x, int y, int z, bool freeze = true);
 	void fill(std::vector<std::tuple<int, int, int>> &selection, int x, int y, int z, int mat);
 	void handleMouseState(Ogre::Real dt);
 	void commonInit();

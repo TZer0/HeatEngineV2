@@ -1,5 +1,15 @@
 #include "simulation.h"
 
+
+std::array<std::tuple<int, int, int>, 6> relativePositions = {{
+	std::tuple<int, int, int>(1,0,0),
+	std::tuple<int, int, int>(0,1,0),
+	std::tuple<int, int, int>(0,0,1),
+	std::tuple<int, int, int>(-1,0,0),
+	std::tuple<int, int, int>(0,-1,0),
+	std::tuple<int, int, int>(0,0,-1),
+}};
+
 Simulation::Simulation()
 {
 	mData.xSize = mData.ySize = mData.zSize = 10;
@@ -45,7 +55,13 @@ void Simulation::tick(Ogre::Real dt)
 			for (int z = 0; z < mData.zSize; z++) {
 				Area *ar = mData.area[x][y][z];
 				Material m = mData.materials.at(ar->mMat);
+				State s = ar->mState;
 				ar->mState = m.getState(ar->dH[mData.latest]);
+				if (s != ar->mState && ar->mState == SOLID) {
+					updateLinks(x, y, z);
+				} else if (s != ar->mState) {
+					updateLinks(x, y, z, false);
+				}
 			}
 		}
 	}
@@ -158,10 +174,17 @@ void Simulation::moveObjectIter(int fx, int fy, int fz, int tx, int ty, int tz)
 {
 	// Fetch selected blocks
 	std::vector<std::tuple<int, int, int>> selection;
-	fill(selection, fx, fy, fz, mData.area[fx][fy][fz]->mMat);
+	Area *ar = mData.area[fx][fy][fz];
+	if (ar->mState == SOLID) {
+		fill(selection, fx, fy, fz, mData.area[fx][fy][fz]->mMat);
+	} else if (ar->mState == LIQUID) {
+		selection.push_back(std::tuple<int, int, int>(fx, fy, fz));
+	} else {
+		return;
+	}
 	int dx, dy, dz, mat;
 	dx = tx-fx; dy = ty-fy; dz = tz-fz;
-	mat = mData.area[fx][fy][fz]->mMat;
+	mat = ar->mMat;
 	// Check if movement is possible
 	for (auto itr = selection.begin(); itr != selection.end(); itr++) {
 		int x = std::get<0>(*itr) + dx;
@@ -172,7 +195,7 @@ void Simulation::moveObjectIter(int fx, int fy, int fz, int tx, int ty, int tz)
 		}
 	}
 	
-	// Remove material where it was, store temperature in the temporary variable.
+	// Remove material where it was, store temperature and links in the temporary variables.
 	for (auto itr = selection.begin(); itr != selection.end(); itr++) {
 		int x = std::get<0>(*itr);
 		int y = std::get<1>(*itr);
@@ -181,6 +204,10 @@ void Simulation::moveObjectIter(int fx, int fy, int fz, int tx, int ty, int tz)
 		from->mMat = 0;
 		from->dH[mData.latest] = from->dH[!mData.latest];
 		from->dH[!mData.latest] = DEFAULTTEMP;
+		for (int i = 0; i < 3; i++) {
+			from->mLinksTmp[i] = from->mLinks[i];
+			from->mLinks[i] = false;
+		}
 	}
 	
 	// Execute movement
@@ -194,6 +221,9 @@ void Simulation::moveObjectIter(int fx, int fy, int fz, int tx, int ty, int tz)
 		to->dH[!mData.latest] = from->dH[mData.latest];
 		to->mState = from->mState;
 		from->mState = mData.materials.at(0).getState(DEFAULTTEMP);
+		for (int i = 0; i < 3; i++) {
+			to->mLinks[i] = from->mLinksTmp[i];
+		}
 	}
 }
 
@@ -202,6 +232,7 @@ void Simulation::fill(std::vector< std::tuple< int, int, int > > &selection, int
 	if (mData.area[x][y][z]->mState == GAS || mData.area[x][y][z]->mState == LIQUID) {
 		return;
 	}
+	Area *ar = mData.area[x][y][z];
 	auto pos = std::tuple<int, int, int>(x,y,z);
 	for (auto itr = selection.begin(); itr != selection.end(); itr++) {
 		if (*itr == pos) {
@@ -209,16 +240,60 @@ void Simulation::fill(std::vector< std::tuple< int, int, int > > &selection, int
 		}
 	}
 	selection.push_back(pos);
-	for (int dx = -1; dx < 2; dx++) {
-		for (int dy = -1; dy < 2; dy++) {
-			for (int dz = -1; dz < 2; dz++) {
-				if ((dx == 0) + (dy == 0) + (dz == 0) != 2) {
-					continue;
-				}
-				if (mData.withinArea(x+dx, y+dy, z+dz)) {
-					fill(selection, x+dx, y+dy, z+dz, mat);
-				}
-			}
+	for (int i = 0; i < 3; i++) {
+		std::tuple<int, int, int> rel = relativePositions[i];
+		int tx = x + std::get<0>(rel);
+		int ty = y + std::get<1>(rel);
+		int tz = z + std::get<2>(rel);
+		if (mData.withinArea(tx, ty, tz) && ar->mLinks[i]) {
+			fill(selection, tx, ty, tz, mat);
+		}
+	}
+	
+	for (int i = 0; i < 3; i++) {
+		std::tuple<int, int, int> rel = relativePositions[i+3];
+		int tx = x + std::get<0>(rel);
+		int ty = y + std::get<1>(rel);
+		int tz = z + std::get<2>(rel);
+		Area *otherAr = mData.area[tx][ty][tz];
+		if (mData.withinArea(tx, ty, tz) && otherAr->mLinks[i]) {
+			fill(selection, tx, ty, tz, mat);
+		}
+	}
+}
+
+void Simulation::updateLinks(int x, int y, int z, bool freeze)
+{
+	Area *ar = mData.area[x][y][z];
+	for (int i = 0; i < 3; i++) {
+		std::tuple<int, int, int> rel = relativePositions[i];
+		int tx = x + std::get<0>(rel);
+		int ty = y + std::get<1>(rel);
+		int tz = z + std::get<2>(rel);
+		if (!mData.withinArea(tx, ty, tz)) {
+			continue;
+		}
+		Area *otherAr = mData.area[tx][ty][tz];
+		if (freeze && (ar->mState == otherAr->mState && ar->mMat == otherAr->mMat)) {
+			ar->mLinks[i] = true;
+		} else {
+			ar->mLinks[i] = false;
+		}
+	}
+	
+	for (int i = 0; i < 3; i++) {
+		std::tuple<int, int, int> rel = relativePositions[i+3];
+		int tx = x + std::get<0>(rel);
+		int ty = y + std::get<1>(rel);
+		int tz = z + std::get<2>(rel);
+		if (!mData.withinArea(tx, ty, tz)) {
+			continue;
+		}
+		Area *otherAr = mData.area[tx][ty][tz];
+		if (freeze && (ar->mState == otherAr->mState && ar->mMat == otherAr->mMat)) {
+			otherAr->mLinks[i] = true;
+		} else {
+			otherAr->mLinks[i] = false;
 		}
 	}
 }
