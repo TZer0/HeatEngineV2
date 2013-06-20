@@ -9,7 +9,7 @@ public:
 	Area(int mat, double H);
 	int mMat;
 	State mState;
-	bool mSelected, mHover;
+	bool mSelected, mHover, mLinks[3];
 	double dH[2];
 	virtual ~Area();
 	void swap(Area *area);

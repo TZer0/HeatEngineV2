@@ -6,6 +6,9 @@ Area::Area()
 	mMat = 0;
 	mState = UNDEFINED;
 	mHover = mSelected = false;
+	for (int i = 0; i < 3; i++) {
+		mLinks[i] = false;
+	}
 }
 
 Area::Area(int mat, double H)
@@ -14,6 +17,9 @@ Area::Area(int mat, double H)
 	mMat = mat;
 	mState = UNDEFINED;
 	mHover = mSelected = false;
+	for (int i = 0; i < 3; i++) {
+		mLinks[i] = false;
+	}
 }
 
 Area::~Area()

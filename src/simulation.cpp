@@ -61,7 +61,6 @@ void Simulation::handleMouseState(Ogre::Real dt)
 		area->dH[mData.latest] += 100*dt;
 	} else if (mData.tool == COOL) {
 		area->dH[mData.latest] = std::max(0., area->dH[mData.latest] - 100*dt);
-		std::cout << area->dH[mData.latest] << std::endl;
 	} else if (mData.tool == INSERTMATERIAL) {
 		if (area->mMat != mData.curMat) {
 			area->mMat = mData.curMat;
@@ -160,9 +159,9 @@ void Simulation::moveObjectIter(int fx, int fy, int fz, int tx, int ty, int tz)
 	// Fetch selected blocks
 	std::vector<std::tuple<int, int, int>> selection;
 	fill(selection, fx, fy, fz, mData.area[fx][fy][fz]->mMat);
-	int dx, dy, dz;
+	int dx, dy, dz, mat;
 	dx = tx-fx; dy = ty-fy; dz = tz-fz;
-	
+	mat = mData.area[fx][fy][fz]->mMat;
 	// Check if movement is possible
 	for (auto itr = selection.begin(); itr != selection.end(); itr++) {
 		int x = std::get<0>(*itr) + dx;
@@ -173,14 +172,28 @@ void Simulation::moveObjectIter(int fx, int fy, int fz, int tx, int ty, int tz)
 		}
 	}
 	
+	// Remove material where it was, store temperature in the temporary variable.
+	for (auto itr = selection.begin(); itr != selection.end(); itr++) {
+		int x = std::get<0>(*itr);
+		int y = std::get<1>(*itr);
+		int z = std::get<2>(*itr);
+		Area *from = mData.area[x][y][z];
+		from->mMat = 0;
+		from->dH[mData.latest] = from->dH[!mData.latest];
+		from->dH[!mData.latest] = DEFAULTTEMP;
+	}
+	
 	// Execute movement
 	for (auto itr = selection.begin(); itr != selection.end(); itr++) {
 		int x = std::get<0>(*itr);
 		int y = std::get<1>(*itr);
 		int z = std::get<2>(*itr);
-		Area *tmp = mData.area[x][y][z];
-		mData.area[x][y][z] = mData.area[x+dx][y+dy][z+dz];
-		mData.area[x+dx][y+dy][z+dz] = tmp;
+		Area *from = mData.area[x][y][z];
+		Area *to = mData.area[x+dx][y+dy][z+dz];
+		to->mMat = mat;
+		to->dH[!mData.latest] = from->dH[mData.latest];
+		to->mState = from->mState;
+		from->mState = mData.materials.at(0).getState(DEFAULTTEMP);
 	}
 }
 
