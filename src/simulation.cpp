@@ -245,6 +245,9 @@ void Simulation::fill(std::vector< std::tuple< int, int, int > > &selection, int
 		int tx = x + std::get<0>(rel);
 		int ty = y + std::get<1>(rel);
 		int tz = z + std::get<2>(rel);
+		if (!mData.withinArea(tx, ty, tz)) {
+			continue;
+		}
 		if (mData.withinArea(tx, ty, tz) && ar->mLinks[i]) {
 			fill(selection, tx, ty, tz, mat);
 		}
@@ -255,8 +258,11 @@ void Simulation::fill(std::vector< std::tuple< int, int, int > > &selection, int
 		int tx = x + std::get<0>(rel);
 		int ty = y + std::get<1>(rel);
 		int tz = z + std::get<2>(rel);
+		if (!mData.withinArea(tx, ty, tz)) {
+			continue;
+		}
 		Area *otherAr = mData.area[tx][ty][tz];
-		if (mData.withinArea(tx, ty, tz) && otherAr->mLinks[i]) {
+		if (otherAr->mLinks[i]) {
 			fill(selection, tx, ty, tz, mat);
 		}
 	}
@@ -301,6 +307,23 @@ void Simulation::updateLinks(int x, int y, int z, bool freeze)
 void Simulation::click(bool state)
 {
 	mData.click = state;
+}
+
+void Simulation::insertMaterialBlock(int fx, int fy, int fz, int tx, int ty, int tz, int mat, double temp)
+{
+	for (int x = fx; x <= tx; x++) {
+		for (int y = fy; y <= ty; y++) {
+			for (int z = fz; z <= tz; z++) {
+				if (!mData.withinArea(x, y, z)) {
+					continue;
+				}
+				
+				Area *ar = mData.area[x][y][z];
+				ar->dH[0] = ar->dH[1] = temp;
+				ar->mMat = mat;
+			}
+		}
+	}
 }
 
 

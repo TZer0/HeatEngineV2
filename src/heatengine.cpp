@@ -16,8 +16,83 @@ HeatEngine::HeatEngine(char *file)
 	mKeyboard(0),
 	mSim(0)
 {
-	mSim = new Simulation();
-	mCamPos = Ogre::Vector3(200, 200, 200);
+	bool fileLoaded = false;
+	if (file != nullptr) {
+		Ogre::FileSystemArchive fileMan("../testScenes", "");
+		if (!fileMan.exists(file)) {
+			std::cout << "Error: file " << file << " does not exist." << std::endl;
+			throw;
+		}
+		Ogre::DataStreamPtr stream = fileMan.open(file);
+		Ogre::ConfigFile conf;
+		conf.load(stream);
+		int sizes[3];
+		
+		// Load sizes
+		for (int i = 0; i < 3; i++) {
+			sizes[i] = getInt(&conf, SizeStrings[i]);
+			if (sizes[i] < 1) {
+				std::cout << "Error: " << SizeStrings[i] << " not defined or less than 1." << std::endl;
+				throw;
+			}
+		}
+		
+		// Load materials
+		Ogre::StringVector matStrings = conf.getMultiSetting("mat");
+		if (matStrings.size() == 0) {
+			std::cout << "Error: requires at least one defined material" << std::endl;
+			throw;
+		}
+		
+		
+		std::vector<Material> mats;
+		for (uint i = 0; i < matStrings.size(); i++) {
+			Ogre::StringVector matProps = Ogre::StringUtil::split(matStrings[i], ",");
+			if (matProps.size() != 4) {
+				std::cout << "Error at mat[" << i << "], requires exactly three temperatures given" << std::endl;
+				throw;
+			}
+			std::vector<double> props;
+			for (int j = 0; j < 3; j++) {
+				props.push_back(Ogre::StringConverter::parseReal(matProps[j]));
+			}
+			if (props[0] > props[1]) {
+				std::cout << "Error: mat[" << i << "][0] is greater than mat[" 
+					<< i << "][1]" << std::endl;
+				throw;
+			}
+			mats.push_back(Material(props[0], props[1], props[2], matProps[3]));
+		}
+		
+		fileLoaded = true;
+		mSim = new Simulation(sizes[0], sizes[1], sizes[2]);
+		CommonData *data = mSim->getData();
+		for (uint i = 0; i < mats.size(); i++) {
+			data->materials.push_back(mats[i]);
+		}
+		
+		// Load blocks of material
+		Ogre::StringVector blockStrings = conf.getMultiSetting("block");
+		for (uint i = 0; i < blockStrings.size(); i++) {
+			Ogre::StringVector blockProps = Ogre::StringUtil::split(blockStrings[i], ",");
+			if (blockProps.size() != 8) {
+				std::cout << "Error in block[" << i << "], size expected: 8, got: " << blockProps.size() << std::endl;
+				throw;
+			}
+			std::vector<int> props;
+			for (uint j = 0; j < 7; j++) {
+				props.push_back(Ogre::StringConverter::parseInt(blockProps[j]));
+			}
+			double temp = Ogre::StringConverter::parseReal(blockProps[7]);
+			mSim->insertMaterialBlock(props[0], props[1], props[2], props[3], props[4], props[5], props[6], temp);
+		}
+	}
+	
+	if (!fileLoaded) {
+		mSim = new Simulation();
+	}
+	CommonData *data = mSim->getData();
+	mCamPos = Ogre::Vector3((data->xSize+2)*TILESIZE, (data->ySize+2)*TILESIZE, (data->zSize+2)*TILESIZE);
 	mLookPos = Ogre::Vector3(0,0,0);
 	mDepth = 1;
 	mHideState[0] = mHideState[1] = mShiftDown = false;
@@ -167,7 +242,7 @@ void HeatEngine::updateEnginePanels()
 		for (int i = 0; i < 2; i++) {
 			engineParams.push_back(Ogre::StringConverter::toString((Ogre::Real)mat.mTransPoints[i]));
 		}
-		engineParams.push_back(Ogre::StringConverter::toString(data->curMat+1) + ":" + mat.mName);
+		engineParams.push_back(Ogre::StringConverter::toString(ar->mMat+1) + ":" + mat.mName);
 	} else {
 		engineParams.push_back("None");
 		engineParams.push_back("-");
@@ -695,6 +770,12 @@ void HeatEngine::useTexCoord(Ogre::ManualObject *obj, int c, bool useOverride, O
 }
 
 
+int getInt(Ogre::ConfigFile *cf, std::string v, std::string def)
+{
+	return Ogre::StringConverter::parseInt(cf->getSetting(v, Ogre::StringUtil::BLANK, def));
+}
+
+
 #if OGRE_PLATFORM == OGRE_PLATFORM_WIN32
 #define WIN32_LEAN_AND_MEAN
 #include "windows.h"
@@ -710,11 +791,16 @@ extern "C" {
 	int main(int argc, char *argv[])
 	#endif
 	{
-		// Create application object
-		HeatEngine app;
 		
 		try {
-			app.go();
+			// Create application object
+			if (argc == 1) {
+				HeatEngine app;
+				app.go();
+			} else {
+				HeatEngine app(argv[1]);
+				app.go();
+			}
 		} catch( Ogre::Exception& e ) {
 			#if OGRE_PLATFORM == OGRE_PLATFORM_WIN32
 			MessageBox( NULL, e.getFullDescription().c_str(), "An exception has occured!", MB_OK | MB_ICONERROR | MB_TASKMODAL);

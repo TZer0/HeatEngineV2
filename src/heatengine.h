@@ -16,12 +16,14 @@
 #include<OISMouse.h>
 
 #include<OgreVector3.h>
+#include<OgreFileSystem.h>
 
 #include<SdkTrays.h>
 #include<SdkCameraMan.h>
 
 #include<array>
 #include<cmath>
+
 
 #include "simulation.h"
 #include "defines.h"
@@ -112,5 +114,7 @@ protected:
 	Ogre::Vector3 mCamPos;
 	Ogre::Vector3 mLookPos;
 };
+
+int getInt(Ogre::ConfigFile *cf, std::string v, std::string def = "-1");
 
 #endif // #ifndef __HeatEngine_h_
