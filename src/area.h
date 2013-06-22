@@ -10,7 +10,8 @@ public:
 	int mMat;
 	State mState;
 	bool mSelected, mHover, mLinks[3], mLinksTmp[3], mSource;
-	double dH[2];
+	std::tuple<double, double, double> mProps;
+	double mH[2];
 	virtual ~Area();
 	void swap(Area *area);
 	void initCommon();

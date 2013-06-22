@@ -16,6 +16,7 @@ public:
 	SimTool tool;
 	Ogre::Real time;
 	Area ****area;
+	double spacing;
 	bool withinArea(Ogre::Vector3 pos) {
 		return withinArea(std::floor(pos.x), std::floor(pos.y), std::floor(pos.z));
 	}
@@ -34,7 +35,7 @@ class Simulation
 	
 public:
 	Simulation();
-	Simulation(int x, int y, int z);
+	Simulation(int x, int y, int z, double spacing);
 	virtual ~Simulation();
 	void tick(Ogre::Real simDt, Ogre::Real actualDt, bool pause);
 	CommonData *getData() { return &mData; }
@@ -43,6 +44,7 @@ public:
 	void changeMaterial(int dM) { mData.curMat = std::max(std::min((int)mData.materials.size()-1, mData.curMat+dM), 0); }
 	void setTool(SimTool tool) { mData.tool = tool; }
 	void insertMaterialBlock(int fx, int fy, int fz, int tx, int ty, int tz, int mat, double temp);
+	void updateStatesAndLinks(bool forcePropertyUpdate = false);
 private:
 	void moveObject(int fx, int fy, int fz, int tx, int ty, int tz);
 	void updateLinks(int x, int y, int z, bool freeze = true);

@@ -15,15 +15,21 @@ Simulation::Simulation()
 	mData.xSize = mData.ySize = mData.zSize = 10;
 	mData.latest = 0;
 	mData.materials.push_back(Material());
-	mData.materials.push_back(Material(273.15, 373.15, 10, "Water"));
+	std::vector<std::pair<double, double>> mCap, mDens, mCond;
+	mCap.push_back(std::pair<double, double>(273.15, 420));
+	mDens.push_back(std::pair<double, double>(273.15, 1));
+	mCond.push_back(std::pair<double, double>(273.15, 0.58));
+	mData.materials.push_back(Material(273.15, 373.15, mCap, mDens, mCond, "Water"));
+	mData.spacing = 0.1;
 	commonInit();
 }
 
-Simulation::Simulation(int x, int y, int z)
+Simulation::Simulation(int x, int y, int z, double spacing)
 {
 	mData.xSize = x;
 	mData.ySize = y;
 	mData.zSize = z;
+	mData.spacing = spacing;
 	commonInit();
 }
 
@@ -41,27 +47,56 @@ void Simulation::tick(Ogre::Real simDt, Ogre::Real actualDt, bool pause)
 {
 	handleMouseState(actualDt);
 	if (!pause) {
+		double dS = mData.spacing;
 		mData.latest = !mData.latest;
 		bool ind = mData.latest;
 		mData.time += simDt;
+		double timeSpace = simDt/(dS*dS);
 		for (int x = 0; x < mData.xSize; x++) {
 			for (int y = 0; y < mData.ySize; y++) {
 				for (int z = 0; z < mData.zSize; z++) {
-					mData.area[x][y][z]->dH[!ind] = mData.area[x][y][z]->dH[ind];//+(x+y+z-mData.xSize*3)*0.1;
+					Area *ar = mData.area[x][y][z];
+					if (ar->mSource) {
+						continue;
+					}
+					std::tuple<double, double, double> props = ar->mProps;
+					double timeSpaceHeat = timeSpace * std::get<2>(props)/(std::get<0>(props) * std::get<1>(props));
+					int relUsed = 0;
+					ar->mH[ind] = ar->mH[!ind];
+					for (auto itr = relativePositions.begin(); itr != relativePositions.end(); itr++) {
+						int tx = std::get<0>(*itr) + x;
+						int ty = std::get<1>(*itr) + y;
+						int tz = std::get<2>(*itr) + z;
+						if (!mData.withinArea(tx, ty, tz)) {
+							continue;
+						}
+						ar->mH[ind] += timeSpaceHeat*mData.area[tx][ty][tz]->mH[!ind];
+						relUsed++;
+					}
+					ar->mH[ind] -= timeSpaceHeat*relUsed*ar->mH[!ind];
 				}
 			}
 		}
 	}
+	updateStatesAndLinks();
+}
+
+void Simulation::updateStatesAndLinks(bool forcePropertyUpdate)
+{
 	for (int x = 0; x < mData.xSize; x++) {
 		for (int y = 0; y < mData.ySize; y++) {
 			for (int z = 0; z < mData.zSize; z++) {
 				Area *ar = mData.area[x][y][z];
 				State s = ar->mState;
-				ar->mState = mData.getState(ar->mMat, ar->dH[mData.latest]);
+				Material *m = &mData.materials.at(ar->mMat);
+				ar->mState = m->getState(ar->mH[mData.latest]);
 				if (s != ar->mState && ar->mState == SOLID) {
 					updateLinks(x, y, z);
 				} else if (s != ar->mState) {
 					updateLinks(x, y, z, false);
+				}
+				if (m->getTempSensitive() || forcePropertyUpdate) {
+					ar->mProps = m->getProperties(ar->mH[mData.latest]);
 				}
 			}
 		}
@@ -73,16 +108,20 @@ void Simulation::handleMouseState(Ogre::Real dt)
 	if (!mData.withinArea(mData.lastX, mData.lastY, mData.lastZ) || !mData.click) {
 		return;
 	}
+	bool ind = mData.latest;
 	Area *area = mData.area[mData.lastX][mData.lastY][mData.lastZ];
 	if (mData.tool == HEAT) {
-		area->dH[mData.latest] += 100*dt;
+		area->mH[ind] += 100*dt;
 	} else if (mData.tool == COOL) {
-		area->dH[mData.latest] = std::max(0., area->dH[mData.latest] - 100*dt);
+		area->mH[ind] = std::max(0., area->mH[ind] - 100*dt);
 	} else if (mData.tool == INSERTMATERIAL) {
 		if (area->mMat != mData.curMat) {
 			area->mMat = mData.curMat;
-			area->dH[mData.latest] = DEFAULTTEMP;
+			area->mH[ind] = DEFAULTTEMP;
 		}
+	}
+	if (area->mSource) {
+		area->mH[!ind] = area->mH[ind];
 	}
 }
 
@@ -172,6 +211,7 @@ void Simulation::moveObject(int fx, int fy, int fz, int tx, int ty, int tz)
 	int dx, dy, dz, mat;
 	dx = tx-fx; dy = ty-fy; dz = tz-fz;
 	mat = ar->mMat;
+	bool ind = mData.latest;
 	
 	// Check if movement is possible
 	for (auto itr = selection.begin(); itr != selection.end(); itr++) {
@@ -197,8 +237,8 @@ void Simulation::moveObject(int fx, int fy, int fz, int tx, int ty, int tz)
 		int z = std::get<2>(*itr);
 		Area *from = mData.area[x][y][z];
 		from->mMat = 0;
-		from->dH[mData.latest] = from->dH[!mData.latest];
-		from->dH[!mData.latest] = DEFAULTTEMP;
+		from->mH[!ind] = from->mH[ind];
+		from->mH[ind] = DEFAULTTEMP;
 		for (int i = 0; i < 3; i++) {
 			from->mLinksTmp[i] = from->mLinks[i];
 			from->mLinks[i] = false;
@@ -213,7 +253,7 @@ void Simulation::moveObject(int fx, int fy, int fz, int tx, int ty, int tz)
 		Area *from = mData.area[x][y][z];
 		Area *to = mData.area[x+dx][y+dy][z+dz];
 		to->mMat = mat;
-		to->dH[!mData.latest] = from->dH[mData.latest];
+		to->mH[ind] = from->mH[!ind];
 		to->mState = from->mState;
 		from->mState = mData.materials.at(0).getState(DEFAULTTEMP);
 		for (int i = 0; i < 3; i++) {
@@ -222,11 +262,10 @@ void Simulation::moveObject(int fx, int fy, int fz, int tx, int ty, int tz)
 	}
 	deselect(selection);
 	
-	bool ind = !mData.latest;
 	for (int x = 0; x < mData.xSize; x++) {
 		for (int y = 0; y < mData.ySize; y++) {
 			for (int z = 0; z < mData.zSize; z++) {
-				mData.area[x][y][z]->dH[!ind] = mData.area[x][y][z]->dH[ind];
+				mData.area[x][y][z]->mH[!ind] = mData.area[x][y][z]->mH[ind];
 			}
 		}
 	}
@@ -329,6 +368,7 @@ void Simulation::click(bool state)
 		if (mData.withinArea(x, y, z)) {
 			Area *ar = mData.area[x][y][z];
 			ar->mSource = !ar->mSource;
+			ar->mH[!mData.latest] = ar->mH[mData.latest];
 			if (ar->mSource) {
 				updateLinks(x, y, z, false);
 			} else {
@@ -348,7 +388,7 @@ void Simulation::insertMaterialBlock(int fx, int fy, int fz, int tx, int ty, int
 				}
 				
 				Area *ar = mData.area[x][y][z];
-				ar->dH[0] = ar->dH[1] = temp;
+				ar->mH[0] = ar->mH[1] = temp;
 				ar->mMat = mat;
 			}
 		}

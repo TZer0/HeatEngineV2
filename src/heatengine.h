@@ -116,5 +116,6 @@ protected:
 };
 
 int getInt(Ogre::ConfigFile *cf, std::string v, std::string def = "-1");
+void extractDoublePairs(std::string v, std::vector<std::pair<double, double>> *dest);
 
 #endif // #ifndef __HeatEngine_h_

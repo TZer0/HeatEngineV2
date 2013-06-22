@@ -1,7 +1,10 @@
 xSize=20
 ySize=20
 zSize=20
-mat=200,270,500,something
-mat=200,400,500,nothing
+mat=200,270,cap1,dens1,conduct1,something
+mat=200,400,cap1,dens1,conduct1,nothing
 block=1,1,1,3,3,3,0,100
 block=5,5,5,8,8,8,1,190
+cap1=273.15,4100
+dens1=273.15,1
+conduct1=273.15,0.5

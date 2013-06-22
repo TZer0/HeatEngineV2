@@ -50,13 +50,14 @@ HeatEngine::HeatEngine(char *file)
 		
 		std::vector<Material> mats;
 		for (uint i = 0; i < matStrings.size(); i++) {
+			std::vector<std::pair<double, double>> mPropVectors[3];
 			Ogre::StringVector matProps = Ogre::StringUtil::split(matStrings[i], ",");
-			if (matProps.size() != 4) {
+			if (matProps.size() != 6) {
 				std::cout << "Error at mat[" << i << "], requires exactly three temperatures given" << std::endl;
 				throw;
 			}
 			std::vector<double> props;
-			for (int j = 0; j < 3; j++) {
+			for (int j = 0; j < 2; j++) {
 				props.push_back(Ogre::StringConverter::parseReal(matProps[j]));
 			}
 			if (props[0] > props[1]) {
@@ -64,11 +65,20 @@ HeatEngine::HeatEngine(char *file)
 					<< i << "][1]" << std::endl;
 				throw;
 			}
-			mats.push_back(Material(props[0], props[1], props[2], matProps[3]));
+			
+			for (int j = 2; j < 5; j++) {
+				extractDoublePairs(conf.getSetting(matProps[j]), &mPropVectors[j-2]);
+				if (mPropVectors[j-2].size() == 0) {
+					std::cout << "Error: property " << matProps[j] << " for material[" << i << "] was not set correctly" << std::endl;
+					throw;
+				}
+			}
+			mats.push_back(Material(props[0], props[1], mPropVectors[0], mPropVectors[1], mPropVectors[2], matProps[5]));
 		}
 		
+		double spacing = Ogre::StringConverter::parseReal(conf.getSetting("spacing", Ogre::StringUtil::BLANK, "0.1"));
 		fileLoaded = true;
-		mSim = new Simulation(sizes[0], sizes[1], sizes[2]);
+		mSim = new Simulation(sizes[0], sizes[1], sizes[2], spacing);
 		CommonData *data = mSim->getData();
 		for (uint i = 0; i < mats.size(); i++) {
 			data->materials.push_back(mats[i]);
@@ -100,6 +110,7 @@ HeatEngine::HeatEngine(char *file)
 	if (!fileLoaded) {
 		mSim = new Simulation();
 	}
+	mSim->updateStatesAndLinks(true);
 	CommonData *data = mSim->getData();
 	mCamPos = Ogre::Vector3((data->xSize+2)*TILESIZE, (data->ySize+2)*TILESIZE, (data->zSize+2)*TILESIZE);
 	mLookPos = Ogre::Vector3(0,0,0);
@@ -249,7 +260,7 @@ void HeatEngine::updateEnginePanels()
 		engineParams.push_back(Ogre::StringConverter::toString(x) + " " +
 			Ogre::StringConverter::toString(y) + " " + Ogre::StringConverter::toString(z));
 		engineParams.push_back(StateStrings[ar->mState]);
-		engineParams.push_back(Ogre::StringConverter::toString((Ogre::Real)ar->dH[data->latest]));
+		engineParams.push_back(Ogre::StringConverter::toString((Ogre::Real)ar->mH[data->latest]));
 		for (int i = 0; i < 2; i++) {
 			engineParams.push_back(Ogre::StringConverter::toString((Ogre::Real)mat.mTransPoints[i]));
 		}
@@ -269,9 +280,9 @@ void HeatEngine::updateEnginePanels()
 	engineParams.push_back(Ogre::StringConverter::toString(mDepth));
 	for (int i = 0; i < 3; i++) {
 		if (mHideState[i]) {
-			engineParams.push_back("Shown");
-		} else {
 			engineParams.push_back("Hidden");
+		} else {
+			engineParams.push_back("Shown");
 		}
 	}
 	if (mPause) {
@@ -699,7 +710,7 @@ void HeatEngine::updateSimulationObj()
 					if (((aState == s_cast && s_cast != UNDEFINED) && (!mHideState[s] && !area->mHover))
 						|| (s_cast == UNDEFINED && area->mHover)) {
 						double *trans = data->materials.at(area->mMat).mTransPoints;
-						double H = area->dH[data->latest];
+						double H = area->mH[data->latest];
 						double texPos = 0;
 						switch(s_cast) {
 							case UNDEFINED:
@@ -809,6 +820,19 @@ int getInt(Ogre::ConfigFile *cf, std::string v, std::string def)
 	return Ogre::StringConverter::parseInt(cf->getSetting(v, Ogre::StringUtil::BLANK, def));
 }
 
+void extractDoublePairs(std::string v, std::vector< std::pair< double, double > >* dest)
+{
+	Ogre::StringVector vals = Ogre::StringUtil::split(v, ",");
+	if (vals.size() % 2 == 1) {
+		std::cout << "Incorrectly formated property string: " << v << std::endl;
+		throw;
+	}
+	for (uint i = 0; i < vals.size(); i+=2) {
+		double temp = Ogre::StringConverter::parseReal(vals[i]);
+		double prop = Ogre::StringConverter::parseReal(vals[i+1]);
+		dest->push_back(std::pair<double, double>(temp, prop));
+	}
+}
 
 #if OGRE_PLATFORM == OGRE_PLATFORM_WIN32
 #define WIN32_LEAN_AND_MEAN
