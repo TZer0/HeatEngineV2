@@ -37,16 +37,18 @@ void Simulation::commonInit()
 	mData.tool = INSERTMATERIAL;
 }
 
-void Simulation::tick(Ogre::Real dt)
+void Simulation::tick(Ogre::Real simDt, Ogre::Real actualDt, bool pause)
 {
-	mData.time += dt;
-	mData.latest = !mData.latest;
-	handleMouseState(dt);
-	bool ind = mData.latest;
-	for (int x = 0; x < mData.xSize; x++) {
-		for (int y = 0; y < mData.ySize; y++) {
-			for (int z = 0; z < mData.zSize; z++) {
-				mData.area[x][y][z]->dH[!ind] = mData.area[x][y][z]->dH[ind];//+(x+y+z-mData.xSize*3)*0.1;
+	handleMouseState(actualDt);
+	if (!pause) {
+		mData.latest = !mData.latest;
+		bool ind = mData.latest;
+		mData.time += simDt;
+		for (int x = 0; x < mData.xSize; x++) {
+			for (int y = 0; y < mData.ySize; y++) {
+				for (int z = 0; z < mData.zSize; z++) {
+					mData.area[x][y][z]->dH[!ind] = mData.area[x][y][z]->dH[ind];//+(x+y+z-mData.xSize*3)*0.1;
+				}
 			}
 		}
 	}
@@ -54,9 +56,8 @@ void Simulation::tick(Ogre::Real dt)
 		for (int y = 0; y < mData.ySize; y++) {
 			for (int z = 0; z < mData.zSize; z++) {
 				Area *ar = mData.area[x][y][z];
-				Material m = mData.materials.at(ar->mMat);
 				State s = ar->mState;
-				ar->mState = m.getState(ar->dH[mData.latest]);
+				ar->mState = mData.getState(ar->mMat, ar->dH[mData.latest]);
 				if (s != ar->mState && ar->mState == SOLID) {
 					updateLinks(x, y, z);
 				} else if (s != ar->mState) {
@@ -220,6 +221,15 @@ void Simulation::moveObject(int fx, int fy, int fz, int tx, int ty, int tz)
 		}
 	}
 	deselect(selection);
+	
+	bool ind = !mData.latest;
+	for (int x = 0; x < mData.xSize; x++) {
+		for (int y = 0; y < mData.ySize; y++) {
+			for (int z = 0; z < mData.zSize; z++) {
+				mData.area[x][y][z]->dH[!ind] = mData.area[x][y][z]->dH[ind];
+			}
+		}
+	}
 }
 
 void Simulation::deselect(std::vector< std::tuple< int, int, int > >& selection)
@@ -313,6 +323,19 @@ void Simulation::updateLinks(int x, int y, int z, bool freeze)
 void Simulation::click(bool state)
 {
 	mData.click = state;
+	if (mData.tool == TOGGLESOURCE && state) {
+		mData.click = false;
+		int x = mData.lastX; int y = mData.lastY; int z = mData.lastZ;
+		if (mData.withinArea(x, y, z)) {
+			Area *ar = mData.area[x][y][z];
+			ar->mSource = !ar->mSource;
+			if (ar->mSource) {
+				updateLinks(x, y, z, false);
+			} else {
+				updateLinks(x, y, z, true);
+			}
+		}
+	}
 }
 
 void Simulation::insertMaterialBlock(int fx, int fy, int fz, int tx, int ty, int tz, int mat, double temp)

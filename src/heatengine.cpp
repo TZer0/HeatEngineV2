@@ -16,6 +16,9 @@ HeatEngine::HeatEngine(char *file)
 	mKeyboard(0),
 	mSim(0)
 {
+	mPause = true;
+	mFreeRunningDelta = true;
+	mDeltaValue = 1;
 	bool fileLoaded = false;
 	if (file != nullptr) {
 		Ogre::FileSystemArchive fileMan("../testScenes", "");
@@ -90,6 +93,8 @@ HeatEngine::HeatEngine(char *file)
 			double temp = Ogre::StringConverter::parseReal(blockProps[7]);
 			mSim->insertMaterialBlock(props[0], props[1], props[2], props[3], props[4], props[5], props[6], temp);
 		}
+		mDeltaValue = Ogre::StringConverter::parseReal(conf.getSetting("delta", Ogre::StringUtil::BLANK, "1"));
+		mFreeRunningDelta = Ogre::StringConverter::parseInt(conf.getSetting("freedelta", Ogre::StringUtil::BLANK, "1"));
 	}
 	
 	if (!fileLoaded) {
@@ -213,11 +218,13 @@ void HeatEngine::createFrameListener(void)
 	engineItems.push_back("Freezing point");
 	engineItems.push_back("Melting point");
 	engineItems.push_back("Material");
+	engineItems.push_back("Changable");
 	engineItems.push_back("Time");
 	engineItems.push_back("Selection depth");
 	for (int i = 0; i < 3; i++) {
 		engineItems.push_back(StateStrings[i]);
 	}
+	engineItems.push_back("State");
 	mEnginePanel = mTrayMgr->createParamsPanel(OgreBites::TL_NONE, "EnginePanel", 200, engineItems);	
 	mTrayMgr->moveWidgetToTray(mEnginePanel, OgreBites::TL_TOPLEFT, 0);
 	mEnginePanel->show();
@@ -247,13 +254,16 @@ void HeatEngine::updateEnginePanels()
 			engineParams.push_back(Ogre::StringConverter::toString((Ogre::Real)mat.mTransPoints[i]));
 		}
 		engineParams.push_back(Ogre::StringConverter::toString(ar->mMat+1) + ":" + mat.mName);
+		if (ar->mSource) {
+			engineParams.push_back("No");
+		} else {
+			engineParams.push_back("Yes");
+		}
 	} else {
 		engineParams.push_back("None");
-		engineParams.push_back("-");
-		engineParams.push_back("-");
-		engineParams.push_back("-");
-		engineParams.push_back("-");
-		engineParams.push_back("-");
+		for (int i = 0; i < 6; i++) {
+			engineParams.push_back("-");
+		}
 	}
 	engineParams.push_back(Ogre::StringConverter::toString(data->time));
 	engineParams.push_back(Ogre::StringConverter::toString(mDepth));
@@ -263,6 +273,11 @@ void HeatEngine::updateEnginePanels()
 		} else {
 			engineParams.push_back("Hidden");
 		}
+	}
+	if (mPause) {
+		engineParams.push_back("Paused");
+	} else {
+		engineParams.push_back("Running");
 	}
 	
 	toolItems.push_back("Selected tool");
@@ -406,8 +421,13 @@ bool HeatEngine::frameRenderingQueued(const Ogre::FrameEvent& evt)
 	if(mShutDown) {
 		return false;
 	}
+
+	if (mFreeRunningDelta) {
+		mSim->tick(evt.timeSinceLastFrame*mDeltaValue, evt.timeSinceLastFrame, mPause);
+	} else {
+		mSim->tick(mDeltaValue, evt.timeSinceLastFrame, mPause);
+	}
 	
-	mSim->tick(evt.timeSinceLastFrame);
 	updateSimulationObj();
 	//Need to capture/update each device
 	mKeyboard->capture();
@@ -545,14 +565,24 @@ bool HeatEngine::keyPressed( const OIS::KeyEvent &arg )
 	{
 		mSim->setTool(COOL);
 	} 
-	else if (arg.key == OIS::KC_1) {
+	else if (arg.key == OIS::KC_C)
+	{
+		mSim->setTool(TOGGLESOURCE);
+	} 
+	else if (arg.key == OIS::KC_1)
+	{
 		mHideState[0] = !mHideState[0];
 	}
-	else if (arg.key == OIS::KC_2) {
+	else if (arg.key == OIS::KC_2)
+	{
 		mHideState[1] = !mHideState[1];
 	}
-	else if (arg.key == OIS::KC_3) {
+	else if (arg.key == OIS::KC_3)
+	{
 		mHideState[2] = !mHideState[2];
+	}
+	else if (arg.key == OIS::KC_P) {
+		mPause = !mPause;
 	}
 	
 	return true;

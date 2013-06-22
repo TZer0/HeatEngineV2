@@ -107,8 +107,8 @@ protected:
 	// Simulation
 	Simulation *mSim;
 	int mDepth;
-	bool mShiftDown;
-	bool mHideState[3];
+	bool mShiftDown, mHideState[3], mPause, mFreeRunningDelta;
+	double mDeltaValue;
 	
 	// Camera variables
 	Ogre::Vector3 mCamPos;
