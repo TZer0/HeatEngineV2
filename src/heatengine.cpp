@@ -88,12 +88,12 @@ HeatEngine::HeatEngine(char *file)
 		Ogre::StringVector blockStrings = conf.getMultiSetting("block");
 		for (uint i = 0; i < blockStrings.size(); i++) {
 			Ogre::StringVector blockProps = Ogre::StringUtil::split(blockStrings[i], ",");
-			if (blockProps.size() != 8) {
-				std::cout << "Error in block[" << i << "], size expected: 8, got: " << blockProps.size() << std::endl;
+			if (blockProps.size() != 9) {
+				std::cout << "Error in block[" << i << "], size expected: 9, got: " << blockProps.size() << std::endl;
 				throw;
 			}
 			std::vector<uint> props;
-			for (uint j = 0; j < 7; j++) {
+			for (uint j = 0; j < 8; j++) {
 				props.push_back(Ogre::StringConverter::parseInt(blockProps[j]));
 			}
 			if (props[6] < 0 || props[6] >= mats.size()) {
@@ -101,7 +101,7 @@ HeatEngine::HeatEngine(char *file)
 				continue;
 			}
 			double temp = Ogre::StringConverter::parseReal(blockProps[7]);
-			mSim->insertMaterialBlock(props[0], props[1], props[2], props[3], props[4], props[5], props[6], temp);
+			mSim->insertMaterialBlock(props[0], props[1], props[2], props[3], props[4], props[5], props[6], props[7], temp);
 		}
 		mDeltaValue = Ogre::StringConverter::parseReal(conf.getSetting("delta", Ogre::StringUtil::BLANK, "1"));
 		mFreeRunningDelta = Ogre::StringConverter::parseInt(conf.getSetting("freedelta", Ogre::StringUtil::BLANK, "1"));
