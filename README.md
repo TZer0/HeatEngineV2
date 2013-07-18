@@ -6,17 +6,30 @@ This is an engine for simulating heat diffusion in a system.
 Controls
 ====
 ESC - quit
+
 A/Q - cycle materials (only during insert material mode)
+
 1/2/3 - Hide/show solid materials/liquid/gas
+
 P - Pause
+
 Right mouse click/Middle mouse click - change camera or look at-position.
+
 Left mouse click - Execute mode action on highlighted block
+
 Mouse wheel - zoom
+
 shift + mouse wheel - change selection depth (used to manipulate the insides of the block)
+
+
 Mode selection:
+
 W - Insert material mode
+
 S - Move mode
+
 E/D - Heat/cool mode
+
 C - Toggle changable mode (will prevent changes in temperature)
 
 
