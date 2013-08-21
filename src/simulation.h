@@ -43,7 +43,7 @@ public:
 	void click(bool state);
 	void changeMaterial(int dM) { mData.curMat = std::max(std::min((int)mData.materials.size()-1, mData.curMat+dM), 0); }
 	void setTool(SimTool tool) { mData.tool = tool; }
-	void insertMaterialBlock(int fx, int fy, int fz, int tx, int ty, int tz, int mat, double temp);
+	void insertMaterialBlock(int fx, int fy, int fz, int tx, int ty, int tz, int mat, bool source, double temp);
 	void updateStatesAndLinks(bool forcePropertyUpdate = false);
 private:
 	void moveObject(int fx, int fy, int fz, int tx, int ty, int tz);

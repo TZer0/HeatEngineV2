@@ -445,7 +445,7 @@ void Simulation::click(bool state)
 	}
 }
 
-void Simulation::insertMaterialBlock(int fx, int fy, int fz, int tx, int ty, int tz, int mat, double temp)
+void Simulation::insertMaterialBlock(int fx, int fy, int fz, int tx, int ty, int tz, int mat, bool source, double temp)
 {
 	for (int x = fx; x <= tx; x++)
 	{
@@ -459,6 +459,7 @@ void Simulation::insertMaterialBlock(int fx, int fy, int fz, int tx, int ty, int
 				}
 				
 				Area *ar = mData.area[x][y][z];
+				ar->mSource = source;
 				ar->mH[0] = ar->mH[1] = temp;
 				ar->mMat = mat;
 			}
