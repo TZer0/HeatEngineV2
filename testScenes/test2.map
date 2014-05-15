@@ -1,0 +1,10 @@
+xSize=20
+ySize=20
+zSize=20
+mat=200,270,cap1,dens1,conduct1,something
+mat=200,400,cap1,dens1,conduct1,nothing
+block=0,0,0,20,20,20,1,0,0
+block=10,10,10,10,10,10,1,1,1000.
+cap1=273.15,4100
+dens1=273.15,1
+conduct1=273.15,0.5

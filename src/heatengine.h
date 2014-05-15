@@ -18,8 +18,8 @@
 #include<OgreVector3.h>
 #include<OgreFileSystem.h>
 
-#include<SdkTrays.h>
-#include<SdkCameraMan.h>
+#include<OGRE/SdkTrays.h>
+#include<OGRE/SdkCameraMan.h>
 
 #include<array>
 #include<cmath>
