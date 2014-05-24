@@ -226,6 +226,7 @@ void HeatEngine::createFrameListener(void)
 	engineItems.push_back("Selected box");
 	engineItems.push_back("State");
 	engineItems.push_back("Heat");
+	engineItems.push_back("Temperature");
 	engineItems.push_back("Freezing point");
 	engineItems.push_back("Melting point");
 	engineItems.push_back("Material");
@@ -260,7 +261,8 @@ void HeatEngine::updateEnginePanels()
 		engineParams.push_back(Ogre::StringConverter::toString(x) + " " +
 			Ogre::StringConverter::toString(y) + " " + Ogre::StringConverter::toString(z));
 		engineParams.push_back(StateStrings[ar->mState]);
-		engineParams.push_back(Ogre::StringConverter::toString((Ogre::Real)ar->mH[data->latest]));
+		engineParams.push_back(Ogre::StringConverter::toString((Ogre::Real)ar->mH[data->latest]) + " J");
+		engineParams.push_back(Ogre::StringConverter::toString((Ogre::Real)(ar->mH[data->latest]/std::get<0>(ar->mProps))) + " K");
 		for (int i = 0; i < 2; i++) {
 			engineParams.push_back(Ogre::StringConverter::toString((Ogre::Real)mat.mTransPoints[i]));
 		}
@@ -272,7 +274,7 @@ void HeatEngine::updateEnginePanels()
 		}
 	} else {
 		engineParams.push_back("None");
-		for (int i = 0; i < 6; i++) {
+		for (int i = 0; i < 7; i++) {
 			engineParams.push_back("-");
 		}
 	}

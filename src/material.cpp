@@ -6,9 +6,9 @@ Material::Material()
 	mTransPoints[1] = 182;
 	mTransPoints[2] = mTransPoints[1] + 400;
 	std::vector<std::pair<double, double>> capacity, density, conductivity;
-	capacity.push_back(std::pair<double, double>(273.15, 1009));
-	conductivity.push_back(std::pair<double, double>(273.15, 0.0204));
-	density.push_back(std::pair<double, double>(273.15, 1.29));
+	capacity.push_back(std::pair<double, double>(0, 1009));
+	conductivity.push_back(std::pair<double, double>(0, 0.0204));
+	density.push_back(std::pair<double, double>(0, 1.29));
 	mProperties.push_back(capacity);
 	mProperties.push_back(density);
 	mProperties.push_back(conductivity);
